@@ -310,7 +310,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         project.dir = s`${this.tempDir}/${repoName}`;
 
         utils.executeCommand(`git clone --no-single-branch "${url}" "${project.dir}"`);
+        utils.executeCommand(`git tag --list`, { cwd: project.dir });
         utils.executeCommand(`git fetch --tags`, { cwd: project.dir });
+        utils.executeCommand(`git tag --list`, { cwd: project.dir });
     }
 
     private projects: Project[] = [];
