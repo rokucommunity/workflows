@@ -1,5 +1,4 @@
-name: Create Release Artifacts
-run-name: Create Release Artifacts
+name: Make Release Artifacts
 
 on:
    workflow_call:

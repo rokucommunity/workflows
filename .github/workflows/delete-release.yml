@@ -1,5 +1,4 @@
 name: Delete Release
-run-name: Delete Release
 
 on:
   workflow_call:
