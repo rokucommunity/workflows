@@ -315,7 +315,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
         logger.log(`TEST this shows up for my reran job`);
         utils.executeCommandVerbose(`git clone --no-single-branch "${url}" "${project.dir}"`);
-        utils.executeCommandVerbose(`git -C "${project.dir}" fetch --tags`);
+        utils.executeCommandVerbose(`git fetch --tags`, { cwd: project.dir });
+        utils.executeCommandVerbose(`git tag --list`, { cwd: project.dir });
     }
 
     private projects: Project[] = [];
