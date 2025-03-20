@@ -42,17 +42,18 @@ export class utils {
         let shouldLog = false;
         options ??= { cwd: process.cwd() };
         if (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
-            options.stdio = 'inherit';
             shouldLog = true;
-        }
-
-        if (options?.stdio !== 'inherit') {
+        } else {
             command = `${command} > /dev/null 2>&1`;
         }
+
         if (shouldLog) {
             logger.inLog(`Executing ${command}`);
         }
-        execSync(command, options);
+        const response = execSync(command, options);
+        if (shouldLog) {
+            console.log(response.toString().trim());
+        }
     }
 
     static executeCommandSucceeds(command: string, options?: any) {
@@ -60,16 +61,15 @@ export class utils {
         options ??= { cwd: process.cwd() };
         if (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
             shouldLog = true;
-        }
-
-        if (options?.stdio !== 'inherit') {
+        } else {
             command = `${command} > /dev/null 2>&1`;
         }
         try {
+            command = `${command} && echo 1`;
             if (shouldLog) {
-                logger.inLog(`Executing ${command}`);
+                logger.inLog(`Executing ${command} and checking for success`);
             }
-            let response = execSync(`${command} && echo 1`, options)?.toString().trim();
+            let response = execSync(command, options)?.toString().trim();
             if (shouldLog) {
                 console.log(response);
             }
@@ -89,7 +89,11 @@ export class utils {
         if (shouldLog) {
             logger.inLog(`Executing ${command}`);
         }
-        return execSync(`${command} `, options).toString().trim();
+        const response = execSync(command, options).toString().trim();
+        if (shouldLog) {
+            console.log(response);
+        }
+        return response;
     }
 
     static async octokitPageHelper<T>(api: (options: any, page: number) => Promise<{ data: T[] }>, options = {}): Promise<T[]> {
