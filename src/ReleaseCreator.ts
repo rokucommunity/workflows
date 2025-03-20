@@ -22,7 +22,6 @@ export class ReleaseCreator {
 
     constructor() {
         dotenv.config();
-        utils.verbose = false;
 
         this.octokit = new Octokit({
             auth: process.env.GH_TOKEN,
