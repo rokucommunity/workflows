@@ -227,6 +227,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             }
         };
 
+        utils.executeCommand(`npm install`, { cwd: project.dir });
+
         install(project, 'dependencies');
         install(project, 'devDependencies', '--save-dev');
     }
