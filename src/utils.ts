@@ -36,16 +36,15 @@ export class logger {
 }
 
 export class utils {
-    static verbose = true;
     static OCTOKIT_PER_PAGE = 100;
 
     static executeCommand(command: string, options?: any) {
         options ??= { cwd: process.cwd() };
-        if (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
+        if (!('stdio' in options) && (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG)) {
             options.stdio = 'inherit';
         }
 
-        if (!utils.verbose) {
+        if (options?.stdio !== 'inherit') {
             command = `${command} > /dev/null 2>&1`;
         }
         //logger.inLog(`Executing ${command}`);
@@ -54,11 +53,11 @@ export class utils {
 
     static executeCommandSucceeds(command: string, options?: any) {
         options ??= { cwd: process.cwd() };
-        if (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
+        if (!('stdio' in options) && (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG)) {
             options.stdio = 'inherit';
         }
 
-        if (!utils.verbose) {
+        if (options?.stdio !== 'inherit') {
             command = `${command} > /dev/null 2>&1`;
         }
         try {
@@ -69,8 +68,11 @@ export class utils {
         }
     }
 
-    static executeCommandWithOutput(command: string, options?: { cwd: string }) {
+    static executeCommandWithOutput(command: string, options?: any) {
         options ??= { cwd: process.cwd() };
+        if (!('stdio' in options) && (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG)) {
+            options.stdio = 'inherit';
+        }
 
         //logger.inLog(`Executing ${command}`);
         return execSync(`${command} `, options).toString().trim();
