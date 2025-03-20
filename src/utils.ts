@@ -41,7 +41,7 @@ export class utils {
     static executeCommand(command: string, options?: any) {
         let shouldLog = false;
         options ??= { cwd: process.cwd() };
-        if (!('stdio' in options) && (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG)) {
+        if (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
             options.stdio = 'inherit';
             shouldLog = true;
         }
@@ -58,8 +58,7 @@ export class utils {
     static executeCommandSucceeds(command: string, options?: any) {
         let shouldLog = false;
         options ??= { cwd: process.cwd() };
-        if (!('stdio' in options) && (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG)) {
-            options.stdio = 'inherit';
+        if (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
             shouldLog = true;
         }
 
@@ -70,7 +69,11 @@ export class utils {
             if (shouldLog) {
                 logger.inLog(`Executing ${command}`);
             }
-            return (execSync(`${command} && echo 1`, options)?.toString().trim() === '1');
+            let response = execSync(`${command} && echo 1`, options)?.toString().trim();
+            if (shouldLog) {
+                console.log(response);
+            }
+            return (response === '1');
         } catch (e) {
             return false;
         }
@@ -79,8 +82,7 @@ export class utils {
     static executeCommandWithOutput(command: string, options?: any) {
         let shouldLog = false;
         options ??= { cwd: process.cwd() };
-        if (!('stdio' in options) && (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG)) {
-            options.stdio = 'inherit';
+        if (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
             shouldLog = true;
         }
 
