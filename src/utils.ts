@@ -39,16 +39,11 @@ export class utils {
     static verbose = true;
     static OCTOKIT_PER_PAGE = 100;
 
-    static executeCommandVerbose(command: string, options?: any) {
+    static executeCommand(command: string, options?: any) {
         options ??= { cwd: process.cwd() };
-        options.stdio = 'inherit';
-
-        //logger.inLog(`Executing ${command}`);
-        execSync(command, options);
-    }
-
-    static executeCommand(command: string, options?: { cwd: string }) {
-        options ??= { cwd: process.cwd() };
+        if (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
+            options.stdio = 'inherit';
+        }
 
         if (!utils.verbose) {
             command = `${command} > /dev/null 2>&1`;
@@ -57,8 +52,11 @@ export class utils {
         execSync(command, options);
     }
 
-    static executeCommandSucceeds(command: string, options?: { cwd: string }) {
+    static executeCommandSucceeds(command: string, options?: any) {
         options ??= { cwd: process.cwd() };
+        if (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
+            options.stdio = 'inherit';
+        }
 
         if (!utils.verbose) {
             command = `${command} > /dev/null 2>&1`;

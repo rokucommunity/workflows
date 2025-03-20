@@ -254,7 +254,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         endVersion = endVersion.startsWith('v') || endVersion === 'HEAD' ? endVersion : 'v' + endVersion;
         let project = this.getProject(projectName);
         logger.log(`listing commits from ${startVersion} to ${endVersion} for ${projectName}`);
-        utils.executeCommandVerbose(`git tag --list`, { cwd: project?.dir });
+        utils.executeCommand(`git tag --list`, { cwd: project?.dir });
         const commitMessages = utils.executeCommandWithOutput(
             `git log ${startVersion}...${endVersion} --oneline --first-parent`,
             { cwd: project?.dir }
@@ -309,8 +309,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         logger.log(`Cloning ${url}`);
         project.dir = s`${this.tempDir}/${repoName}`;
 
-        utils.executeCommandVerbose(`git clone --no-single-branch "${url}" "${project.dir}"`);
-        utils.executeCommandVerbose(`git fetch --tags`, { cwd: project.dir });
+        utils.executeCommand(`git clone --no-single-branch "${url}" "${project.dir}"`);
+        utils.executeCommand(`git fetch --tags`, { cwd: project.dir });
     }
 
     private projects: Project[] = [];
