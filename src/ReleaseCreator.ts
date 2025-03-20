@@ -320,7 +320,7 @@ export class ReleaseCreator {
                 }
             }
             { //Scope for open-vsx
-                const response = utils.executeCommandWithOutput(`curl - s "https://open-vsx.org/api/-/query?extensionId=${vsceName}"`);
+                const response = utils.executeCommandWithOutput(`curl -s "https://open-vsx.org/api/-/query?extensionId=${vsceName}"`);
                 const json = JSON.parse(response);
                 const versions = json?.extensions[0]?.allVersions ?? {};
                 if (!(releaseVersion in versions)) {
