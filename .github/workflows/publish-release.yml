@@ -40,4 +40,6 @@ jobs:
       - name: Run publish
         env:
           GH_TOKEN: ${{ github.token }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
         run: npx ts-node nested-ci/src/cli.ts publish-release --branch ${{ inputs.branch }} --releaseType ${{ inputs.release-type }}
