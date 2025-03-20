@@ -117,7 +117,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             const jsonObject = JSON.parse(content);
             projectNpmNames.push({ repoName: x.name, packageName: jsonObject.name });
             this.projects.push(new Project(x.name, jsonObject.name, x.html_url));
-            logger.log(`Error getting package.json for ${x.name}`);
         });
         await Promise.allSettled(promises);
 
@@ -125,20 +124,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         let projectPackageJson = fsExtra.readJsonSync(s`package.json`);
         let project = this.getProject(projectName);
         let projectsToClone: Project[] = [new Project(project.name)]
-        Object.keys(projectPackageJson.dependencies).forEach(dependency => {
-            let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
-            if (foundDependency) {
-                projectsToClone.push(new Project(foundDependency.repoName));
-                project.dependencies.push({ name: dependency, previousReleaseVersion: '', newVersion: '' });
-            }
-        });
-        Object.keys(projectPackageJson.devDependencies).forEach(dependency => {
-            let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
-            if (foundDependency) {
-                projectsToClone.push(new Project(foundDependency.repoName));
-                project.devDependencies.push({ name: dependency, previousReleaseVersion: '', newVersion: '' });
-            }
-        });
+        if (projectPackageJson.dependencies) {
+            Object.keys(projectPackageJson.dependencies).forEach(dependency => {
+                let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
+                if (foundDependency) {
+                    projectsToClone.push(new Project(foundDependency.repoName));
+                    project.dependencies.push({ name: dependency, previousReleaseVersion: '', newVersion: '' });
+                }
+            });
+        }
+        if (projectPackageJson.devDependencies) {
+            Object.keys(projectPackageJson.devDependencies).forEach(dependency => {
+                let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
+                if (foundDependency) {
+                    projectsToClone.push(new Project(foundDependency.repoName));
+                    project.devDependencies.push({ name: dependency, previousReleaseVersion: '', newVersion: '' });
+                }
+            });
+        }
         projectsToClone = [...new Set(projectsToClone)];
         return projectsToClone;
     }
