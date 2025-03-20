@@ -123,7 +123,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         logger.log(`Get the package.json for the project ${projectName}, and find the dependencies that need to be cloned`);
         let projectPackageJson = fsExtra.readJsonSync(s`package.json`);
         let project = this.getProject(projectName);
-        let projectsToClone: Project[] = [new Project(project.name)]
+        let projectsToClone: Project[] = [project]
         if (projectPackageJson.dependencies) {
             Object.keys(projectPackageJson.dependencies).forEach(dependency => {
                 let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
