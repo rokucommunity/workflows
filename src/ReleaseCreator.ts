@@ -308,7 +308,7 @@ export class ReleaseCreator {
         logger.log(`Publishing artifacts`);
         if (options.releaseType === 'npm') {
             logger.inLog(`Publishing ${assets[0].name} to npm`);
-            utils.executeCommand(`npm publish ${assets[0].name}`);
+            // utils.executeCommand(`npm publish ${assets[0].name}`);
         } else if (options.releaseType === 'vsce') {
             const vsceName = this.getVscePackageName();
             { //Scope for vscode
@@ -316,7 +316,7 @@ export class ReleaseCreator {
                 const json = JSON.parse(versions);
                 if (!(json.versions.find((version: any) => version.version === releaseVersion))) {
                     logger.inLog(`Publishing ${assets[0].name} to vscode`);
-                    utils.executeCommand(`npx vsce publish --packagePath ${assets[0].name} -p ${process.env.VSCE_TOKEN}`);
+                    // utils.executeCommand(`npx vsce publish --packagePath ${assets[0].name} -p ${process.env.VSCE_TOKEN}`);
                 }
             }
             { //Scope for open-vsx
@@ -325,7 +325,7 @@ export class ReleaseCreator {
                 const versions = json?.extensions[0]?.allVersions ?? {};
                 if (!(releaseVersion in versions)) {
                     logger.inLog(`Publishing ${assets[0].name} to open - vsx`);
-                    utils.executeCommand(`npx ovsx publish --packagePath ${assets[0].name} -p ${process.env.VSCE_TOKEN} --debug`);
+                    // utils.executeCommand(`npx ovsx publish --packagePath ${assets[0].name} -p ${process.env.VSCE_TOKEN} --debug`);
                 }
             }
 
