@@ -200,18 +200,20 @@ export class ReleaseCreator {
             pull_number: pullRequest.data[0].number
         });
 
-        const changelogFile = files.find(f => f.filename === 'CHANGELOG.md');
-        const parsedPatch = diffParse.default(changelogFile.patch);
         let lines = [];
+        const changelogFile = files.find(f => f.filename === 'CHANGELOG.md');
+        if (changelogFile) {
+            const parsedPatch = diffParse.default(changelogFile.patch);
 
-        parsedPatch?.at(0)?.chunks.forEach(chunk => {
-            chunk.changes.forEach(change => {
-                // only add new lines to the patch notes
-                if (change.type === 'add') {
-                    lines.push(change.content.slice(1));
-                }
+            parsedPatch?.at(0)?.chunks.forEach(chunk => {
+                chunk.changes.forEach(change => {
+                    // only add new lines to the patch notes
+                    if (change.type === 'add') {
+                        lines.push(change.content.slice(1));
+                    }
+                });
             });
-        });
+        }
 
         // remove the release header from the patch notes
         const regex = new RegExp(`## \\[${releaseVersion}\\]\\(.*\\) - \\d{4}-\\d{2}-\\d{2}`);
