@@ -39,6 +39,13 @@ export class utils {
     static verbose = true;
     static OCTOKIT_PER_PAGE = 100;
 
+    static executeCommandVerbose(command: string, options?: { cwd: string }) {
+        options ??= { cwd: process.cwd() };
+
+        //logger.inLog(`Executing ${command}`);
+        execSync(command, options);
+    }
+
     static executeCommand(command: string, options?: { cwd: string }) {
         options ??= { cwd: process.cwd() };
 

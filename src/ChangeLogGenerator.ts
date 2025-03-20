@@ -257,11 +257,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         if (this.isVersion(startVersion)) {
             startVersion = startVersion.startsWith('v') ? startVersion : 'v' + startVersion;
         }
-        let project = this.getProject(projectName);
         endVersion = endVersion.startsWith('v') || endVersion === 'HEAD' ? endVersion : 'v' + endVersion;
-        const commitMessages = utils.executeCommandWithOutput(`git log ${startVersion}...${endVersion} --oneline --first-parent`, {
-            cwd: project?.dir
-        }).toString()
+        let project = this.getProject(projectName);
+        const commitMessages = utils.executeCommandWithOutput(
+            `git log ${startVersion}...${endVersion} --oneline --first-parent`,
+            { cwd: project?.dir }
+        ).toString()
             .split(/\r?\n/g)
             //exclude empty lines
             .filter(x => x.trim())
@@ -312,8 +313,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         logger.log(`Cloning ${url}`);
         project.dir = s`${this.tempDir}/${repoName}`;
 
-        utils.executeCommand(`git clone --no-single-branch "${url}" "${project.dir}"`);
-        utils.executeCommand(`git -C "${project.dir}" fetch --tags`);
+        logger.log(`TEST this shows up for my reran job`);
+        utils.executeCommandVerbose(`git clone --no-single-branch "${url}" "${project.dir}"`);
+        utils.executeCommandVerbose(`git -C "${project.dir}" fetch --tags`);
     }
 
     private projects: Project[] = [];
