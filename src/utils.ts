@@ -39,29 +39,37 @@ export class utils {
     static OCTOKIT_PER_PAGE = 100;
 
     static executeCommand(command: string, options?: any) {
+        let shouldLog = false;
         options ??= { cwd: process.cwd() };
         if (!('stdio' in options) && (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG)) {
             options.stdio = 'inherit';
+            shouldLog = true;
         }
 
         if (options?.stdio !== 'inherit') {
             command = `${command} > /dev/null 2>&1`;
         }
-        //logger.inLog(`Executing ${command}`);
+        if (shouldLog) {
+            logger.inLog(`Executing ${command}`);
+        }
         execSync(command, options);
     }
 
     static executeCommandSucceeds(command: string, options?: any) {
+        let shouldLog = false;
         options ??= { cwd: process.cwd() };
         if (!('stdio' in options) && (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG)) {
             options.stdio = 'inherit';
+            shouldLog = true;
         }
 
         if (options?.stdio !== 'inherit') {
             command = `${command} > /dev/null 2>&1`;
         }
         try {
-            //logger.inLog(`Executing ${command}`);
+            if (shouldLog) {
+                logger.inLog(`Executing ${command}`);
+            }
             return (execSync(`${command} && echo 1`, options)?.toString().trim() === '1');
         } catch (e) {
             return false;
@@ -69,12 +77,16 @@ export class utils {
     }
 
     static executeCommandWithOutput(command: string, options?: any) {
+        let shouldLog = false;
         options ??= { cwd: process.cwd() };
         if (!('stdio' in options) && (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG)) {
             options.stdio = 'inherit';
+            shouldLog = true;
         }
 
-        //logger.inLog(`Executing ${command}`);
+        if (shouldLog) {
+            logger.inLog(`Executing ${command}`);
+        }
         return execSync(`${command} `, options).toString().trim();
     }
 
