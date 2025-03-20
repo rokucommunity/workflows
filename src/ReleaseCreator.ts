@@ -44,7 +44,7 @@ export class ReleaseCreator {
         }
 
         logger.log(`Checkout branch ${options.branch}`);
-        if (!utils.executeCommandSucceeds(`git checkout ${options.branch}`)) {
+        if (!utils.executeCommandSucceeds(`git checkout --quiet ${options.branch}`)) {
             throw new Error(`Branch ${options.branch} does not exist`);
         }
 
