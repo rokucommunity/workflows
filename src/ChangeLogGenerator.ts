@@ -128,7 +128,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             Object.keys(projectPackageJson.dependencies).forEach(dependency => {
                 let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
                 if (foundDependency) {
-                    projectsToClone.push(new Project(foundDependency.repoName));
+                    projectsToClone.push(this.getProject(foundDependency.repoName));
                     project.dependencies.push({ name: dependency, previousReleaseVersion: '', newVersion: '' });
                 }
             });
@@ -137,7 +137,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             Object.keys(projectPackageJson.devDependencies).forEach(dependency => {
                 let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
                 if (foundDependency) {
-                    projectsToClone.push(new Project(foundDependency.repoName));
+                    projectsToClone.push(this.getProject(foundDependency.repoName));
                     project.devDependencies.push({ name: dependency, previousReleaseVersion: '', newVersion: '' });
                 }
             });
