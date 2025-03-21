@@ -174,7 +174,7 @@ export class ReleaseCreator {
                 data: (fsExtra.readFileSync(artifact) as unknown as string),
                 headers: {
                     'content-type': 'application/octet-stream',
-                    'content-length': fsExtra.statSync(artifact)
+                    'content-length': fsExtra.statSync(artifact).size
                 }
             });
             if (uploadResponse.status === 201) {
