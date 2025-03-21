@@ -307,7 +307,12 @@ export class ReleaseCreator {
         logger.log(`Publishing artifacts`);
         if (options.releaseType === 'npm') {
             logger.inLog(`Publishing ${assets[0].name} to npm`);
-            // utils.executeCommand(`npm publish ${assets[0].name}`);
+            const packageName = this.getPackageName();
+            const versions = utils.executeCommandWithOutput(`npm view ${packageName} versions --json`).toString();
+            const json = JSON.parse(versions);
+            if (!json.includes(releaseVersion)) {
+                //utils.executeCommand(`npm publish ${assets[0].name}`);
+            }
         } else if (options.releaseType === 'vsce') {
             const vsceName = this.getVscePackageName();
             { //Scope for vscode
