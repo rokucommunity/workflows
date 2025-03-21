@@ -39,38 +39,32 @@ export class utils {
     static OCTOKIT_PER_PAGE = 100;
 
     static executeCommand(command: string, options?: any) {
-        let shouldLog = false;
         options ??= { cwd: process.cwd() };
-        if (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
-            shouldLog = true;
-        } else {
+        if (!process.env.RUNNER_DEBUG) {
             command = `${command} > /dev/null 2>&1`;
         }
 
-        if (shouldLog) {
+        if (process.env.RUNNER_DEBUG) {
             logger.inLog(`Executing ${command}`);
         }
         const response = execSync(command, options);
-        if (shouldLog) {
+        if (process.env.RUNNER_DEBUG) {
             console.log(response.toString().trim());
         }
     }
 
     static executeCommandSucceeds(command: string, options?: any) {
-        let shouldLog = false;
         options ??= { cwd: process.cwd() };
-        if (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
-            shouldLog = true;
-        } else {
+        if (!process.env.RUNNER_DEBUG) {
             command = `${command} > /dev/null 2>&1`;
         }
         try {
             command = `${command} && echo 1`;
-            if (shouldLog) {
+            if (process.env.RUNNER_DEBUG) {
                 logger.inLog(`Executing ${command} and checking for success`);
             }
             let response = execSync(command, options)?.toString().trim();
-            if (shouldLog) {
+            if (process.env.RUNNER_DEBUG) {
                 console.log(response);
             }
             return (response === '1');
@@ -80,17 +74,12 @@ export class utils {
     }
 
     static executeCommandWithOutput(command: string, options?: any) {
-        let shouldLog = false;
         options ??= { cwd: process.cwd() };
-        if (process.env.ACTIONS_RUNNER_DEBUG || process.env.ACTIONS_STEP_DEBUG) {
-            shouldLog = true;
-        }
-
-        if (shouldLog) {
+        if (process.env.RUNNER_DEBUG) {
             logger.inLog(`Executing ${command}`);
         }
         const response = execSync(command, options).toString().trim();
-        if (shouldLog) {
+        if (process.env.RUNNER_DEBUG) {
             console.log(response);
         }
         return response;
