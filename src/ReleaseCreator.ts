@@ -34,7 +34,7 @@ export class ReleaseCreator {
      * updating the changelog and version, creating a release pull request
      * and creating a GitHub release
      */
-    public async initializeRelease(options: { releaseType: ReleaseType | string, branch: string }) {
+    public async initializeRelease(options: { releaseType: ReleaseType | string, branch: string, installDependencies: boolean }) {
         logger.log(`Intialize release... releaseType: ${options.releaseType}, branch: ${options.branch}`);
         logger.increaseIndent();
 
@@ -73,7 +73,8 @@ export class ReleaseCreator {
         logger.log(`Update the changelog`);
         await new ChangelogGenerator().updateChangeLog({
             project: repoName,
-            releaseVersion: releaseVersion
+            releaseVersion: releaseVersion,
+            installDependencies: options.installDependencies
         }).catch(e => {
             console.error(e);
             process.exit(1);

@@ -16,6 +16,7 @@ export class ChangelogGenerator {
     private options: {
         project: string;
         releaseVersion: string;
+        installDependencies: boolean;
     };
 
     static MARKER = 'this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).';
@@ -53,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         }
         logger.log(`Last release was ${lastTag}`);
 
-        this.installDependencies(project, latestReleaseVersion);
+        this.installDependencies(project, latestReleaseVersion, options.installDependencies);
 
         this.computeChanges(project, lastTag);
 
@@ -209,13 +210,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         return /\d+\.\d+\.\d+/.exec(version)?.[0] as string;
     }
 
-    private installDependencies(project: Project, latestReleaseVersion: string) {
+    private installDependencies(project: Project, latestReleaseVersion: string, installDependencies: boolean) {
         logger.log('installing', project.dependencies.length, 'dependencies and', project.devDependencies.length, 'devDependencies');
 
         const install = (project: Project, dependencyType: 'dependencies' | 'devDependencies', flags?: string) => {
             for (const dependency of project[dependencyType]) {
                 dependency.previousReleaseVersion = this.getDependencyVersionFromRelease(project, latestReleaseVersion, dependency.name, dependencyType);
-                dependency.newVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
+                if (installDependencies) {
+                    //TODO should I create a commit here?
+                    //  Don't love this class touching git repo things
+                    //  It would be explicit even if it is not necessary
+                    // would I rather have 1 commit with all the dependencies?
+                    utils.executeCommand(`npm install ${dependency.name}@latest`, { cwd: project.dir });
+                    dependency.newVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
+
+                    if (dependency.newVersion !== dependency.previousReleaseVersion) {
+                        logger.log(`Updating ${dependencyType} version for ${dependency.name} from ${dependency.previousReleaseVersion} to ${dependency.newVersion}`);
+                    }
+
+                } else {
+                    dependency.newVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
+                }
             }
         };
 

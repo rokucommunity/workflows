@@ -12,6 +12,11 @@ on:
         type: string
         description: "The type of release: major, minor, or patch"
         required: true
+      installDependencies:
+        type: boolean
+        description: "Whether to install dependencies"
+        required: false
+        default: true
 
 jobs:
   initialize-release:
@@ -62,4 +67,9 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
           DEBUG_LOGGING: ${{ env.RUNNER_DEBUG }}
-        run: npx ts-node nested-ci/src/cli.ts initialize-release --releaseType "${{ inputs.releaseType }}" --branch "${{ inputs.branch }}"
+        run: |
+          npx ts-node nested-ci/src/cli.ts
+            initialize-release
+            --releaseType "${{ inputs.releaseType }}"
+            --branch "${{ inputs.branch }}"
+            --installDependencies "${{ inputs.installDependencies }}"
