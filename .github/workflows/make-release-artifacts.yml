@@ -55,4 +55,8 @@ jobs:
       - name: Run upload
         env:
           GH_TOKEN: ${{ github.token }}
-        run: npx ts-node nested-ci/src/cli.ts upload-release --branch ${{ inputs.branch }} --artifactPaths ${{ inputs.artifact-paths }}
+        run: |
+          npx ts-node nested-ci/src/cli.ts
+          upload-release
+          --branch ${{ inputs.branch }}
+          --artifactPaths ${{ inputs.artifact-paths }}
