@@ -38,13 +38,17 @@ export class logger {
 export class utils {
     static OCTOKIT_PER_PAGE = 100;
 
+    static isVerbose(): boolean {
+        return process.env.RUNNER_DEBUG === 'true';
+    }
+
     static executeCommand(command: string, options?: any) {
         options ??= { cwd: process.cwd() };
-        if (!process.env.RUNNER_DEBUG) {
+        if (!this.isVerbose()) {
             command = `${command} > /dev/null 2>&1`;
         }
 
-        if (process.env.RUNNER_DEBUG) {
+        if (this.isVerbose()) {
             logger.inLog(`Executing ${command}`);
         }
         const response = execSync(command, options);
@@ -55,16 +59,16 @@ export class utils {
 
     static executeCommandSucceeds(command: string, options?: any) {
         options ??= { cwd: process.cwd() };
-        if (!process.env.RUNNER_DEBUG) {
+        if (!this.isVerbose()) {
             command = `${command} > /dev/null 2>&1`;
         }
         try {
             command = `${command} && echo 1`;
-            if (process.env.RUNNER_DEBUG) {
+            if (this.isVerbose()) {
                 logger.inLog(`Executing ${command} and checking for success`);
             }
             let response = execSync(command, options)?.toString().trim();
-            if (process.env.RUNNER_DEBUG) {
+            if (this.isVerbose()) {
                 console.log(response);
             }
             return (response === '1');
@@ -75,11 +79,11 @@ export class utils {
 
     static executeCommandWithOutput(command: string, options?: any) {
         options ??= { cwd: process.cwd() };
-        if (process.env.RUNNER_DEBUG) {
+        if (this.isVerbose()) {
             logger.inLog(`Executing ${command}`);
         }
         const response = execSync(command, options).toString().trim();
-        if (process.env.RUNNER_DEBUG) {
+        if (this.isVerbose()) {
             console.log(response);
         }
         return response;
