@@ -4,6 +4,7 @@ import * as path from 'path';
 import { execSync } from 'child_process';
 import { ReleaseCreator } from './ReleaseCreator';
 import { ChangelogGenerator } from './ChangeLogGenerator';
+import { logger } from './utils';
 
 let options = yargs
     .command('initialize-release', 'Initialize a release PR, draft GitHub release', (builder) => {
@@ -15,6 +16,7 @@ let options = yargs
             console.error(`Invalid release version. Must be one of 'major', 'minor', or 'patch'`);
             process.exit(1);
         }
+        printEnvValues();
         new ReleaseCreator().initializeRelease({ branch: argv.branch, releaseType: argv.releaseType }).catch(e => {
             console.error(e);
             process.exit(1);
@@ -25,6 +27,7 @@ let options = yargs
             .option('branch', { type: 'string', description: 'The branch the release is based on' })
             .option('artifactPaths', { type: 'string', description: 'The glob pattern used to get release artifact(s)' })
     }, (argv) => {
+        printEnvValues();
         new ReleaseCreator().uploadRelease(argv).catch(e => {
             console.error(e);
             process.exit(1);
@@ -35,6 +38,7 @@ let options = yargs
             .option('branch', { type: 'string', description: 'The branch the release is based on' })
             .option('releaseType', { type: 'string', description: 'The store we are releasing to' })
     }, (argv) => {
+        printEnvValues();
         new ReleaseCreator().publishRelease(argv).catch(e => {
             console.error(e);
             process.exit(1);
@@ -44,9 +48,16 @@ let options = yargs
         return builder
             .option('releaseVersion', { type: 'string', description: 'The version the release is based on' })
     }, (argv) => {
+        printEnvValues();
         new ReleaseCreator().deleteRelease(argv).catch(e => {
             console.error(e);
             process.exit(1);
         });
     })
     .argv;
+
+
+function printEnvValues() {
+    logger.log('Environment Variables:');
+    logger.inLog(`RUNNER_DEBUG: ${process.env.RUNNER_DEBUG}`);
+}
