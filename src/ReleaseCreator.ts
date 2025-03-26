@@ -100,8 +100,10 @@ export class ReleaseCreator {
         });
 
         //Creating the pull request will trigger another workflow, so it should be the last step of this flow
-        const changelogLink = `https://github.com/${this.ORG}/${repoName}/blob/release/${releaseVersion}/CHANGELOG.md#${releaseVersion}---${new Date().toISOString().split('T')[0]}`;
         logger.log(`Create pull request in ${repoName}: release/${releaseVersion} -> ${options.branch}`);
+        const linkDate = new Date().toISOString().split('T')[0];
+        const versionStrip = releaseVersion.replace('.', '');
+        const changelogLink = `https://github.com/${this.ORG}/${repoName}/blob/release/${releaseVersion}/CHANGELOG.md#${versionStrip}---${linkDate}`;
         const createResponse = await this.octokit.rest.pulls.create({
             owner: this.ORG,
             repo: repoName,
