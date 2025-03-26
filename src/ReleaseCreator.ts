@@ -87,6 +87,8 @@ export class ReleaseCreator {
         utils.executeCommandWithOutput(`git tag v${releaseVersion} -m '${releaseVersion}'`);
 
         logger.log(`Push up the release branch`);
+
+        utils.executeCommand(`git pull --rebase origin release/${releaseVersion}`);
         utils.executeCommand(`git push --atomic origin release/${releaseVersion} v${releaseVersion}`);
 
         logger.log(`Create GitHub release for ${releaseVersion}`);

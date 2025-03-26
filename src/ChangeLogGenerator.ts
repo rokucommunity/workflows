@@ -54,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         }
         logger.log(`Last release was ${lastTag}`);
 
-        this.installDependencies(project, latestReleaseVersion, options.installDependencies);
+        this.installDependencies(project, latestReleaseVersion, options.installDependencies, options.releaseVersion);
 
         this.computeChanges(project, lastTag);
 
@@ -210,22 +210,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         return /\d+\.\d+\.\d+/.exec(version)?.[0] as string;
     }
 
-    private installDependencies(project: Project, latestReleaseVersion: string, installDependencies: boolean) {
+    private installDependencies(project: Project, latestReleaseVersion: string, installDependencies: boolean, releaseVersion: string) {
         logger.log('installing', project.dependencies.length, 'dependencies and', project.devDependencies.length, 'devDependencies');
 
         const install = (project: Project, dependencyType: 'dependencies' | 'devDependencies', flags?: string) => {
             for (const dependency of project[dependencyType]) {
                 dependency.previousReleaseVersion = this.getDependencyVersionFromRelease(project, latestReleaseVersion, dependency.name, dependencyType);
                 if (installDependencies) {
-                    //TODO should I create a commit here?
-                    //  Don't love this class touching git repo things
-                    //  It would be explicit even if it is not necessary
-                    // would I rather have 1 commit with all the dependencies?
                     utils.executeCommand(`npm install ${dependency.name}@latest`, { cwd: project.dir });
                     dependency.newVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
 
                     if (dependency.newVersion !== dependency.previousReleaseVersion) {
                         logger.log(`Updating ${dependencyType} version for ${dependency.name} from ${dependency.previousReleaseVersion} to ${dependency.newVersion}`);
+                        utils.executeCommand(`git checkout release/${releaseVersion}`, { cwd: project.dir });
+                        utils.executeCommand(`git add package*`, { cwd: project.dir });
+                        utils.executeCommand(`git commit -m "Update ${dependencyType} version for ${dependency.name} from ${dependency.previousReleaseVersion} to ${dependency.newVersion}"`, { cwd: project.dir });
+                        utils.executeCommand(`git pull --rebase origin release/${releaseVersion}`, { cwd: project.dir });
+                        utils.executeCommand(`git push origin release/${releaseVersion}`, { cwd: project.dir });
                     }
 
                 } else {
