@@ -42,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         }
 
         const project = projects.filter(x => options.project.length === 0 || options.project.includes(x.name))?.at(0);
+        logger.log('Set the current project dir to this working directory')
+        project.dir = process.cwd();
 
         let lastTag = this.getLastTag(project.dir);
         let latestReleaseVersion;
@@ -124,7 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         logger.log(`Get the package.json for the project ${projectName}, and find the dependencies that need to be cloned`);
         let projectPackageJson = fsExtra.readJsonSync(s`package.json`);
         let project = this.getProject(projectName);
-        let projectsToClone: Project[] = [project]
+        let projectsToClone: Project[] = []
         if (projectPackageJson.dependencies) {
             Object.keys(projectPackageJson.dependencies).forEach(dependency => {
                 let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
@@ -222,12 +224,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
                     if (dependency.newVersion !== dependency.previousReleaseVersion) {
                         logger.log(`Updating ${dependencyType} version for ${dependency.name} from ${dependency.previousReleaseVersion} to ${dependency.newVersion}`);
-                        utils.executeCommand(`git fetch origin release/${releaseVersion}`, { cwd: project.dir });
-                        utils.executeCommand(`git checkout release/${releaseVersion}`, { cwd: project.dir });
                         utils.executeCommand(`git add package*`, { cwd: project.dir });
                         utils.executeCommand(`git commit -m "Update ${dependencyType} version for ${dependency.name} from ${dependency.previousReleaseVersion} to ${dependency.newVersion}"`, { cwd: project.dir });
-                        utils.executeCommand(`git pull --rebase origin release/${releaseVersion}`, { cwd: project.dir });
-                        utils.executeCommand(`git push origin release/${releaseVersion}`, { cwd: project.dir });
                     }
 
                 } else {
