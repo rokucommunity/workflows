@@ -219,7 +219,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             for (const dependency of project[dependencyType]) {
                 dependency.previousReleaseVersion = this.getDependencyVersionFromRelease(project, latestReleaseVersion, dependency.name, dependencyType);
                 if (installDependencies) {
-                    utils.executeCommand(`npm --version`, { cwd: project.dir });
+                    utils.executeCommand(`node --version`, { cwd: project.dir });
                     utils.executeCommand(`npm install ${dependency.name}@latest`, { cwd: project.dir });
                     dependency.newVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
 
