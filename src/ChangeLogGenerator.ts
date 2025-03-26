@@ -222,6 +222,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
                     if (dependency.newVersion !== dependency.previousReleaseVersion) {
                         logger.log(`Updating ${dependencyType} version for ${dependency.name} from ${dependency.previousReleaseVersion} to ${dependency.newVersion}`);
+                        utils.executeCommand(`git fetch origin release/${releaseVersion}`, { cwd: project.dir });
                         utils.executeCommand(`git checkout release/${releaseVersion}`, { cwd: project.dir });
                         utils.executeCommand(`git add package*`, { cwd: project.dir });
                         utils.executeCommand(`git commit -m "Update ${dependencyType} version for ${dependency.name} from ${dependency.previousReleaseVersion} to ${dependency.newVersion}"`, { cwd: project.dir });
