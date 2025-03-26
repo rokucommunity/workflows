@@ -39,7 +39,7 @@ export class utils {
     static OCTOKIT_PER_PAGE = 100;
 
     static isVerbose(): boolean {
-        return process.env.RUNNER_DEBUG === 'true';
+        return process.env.RUNNER_DEBUG === '1';
     }
 
     static executeCommand(command: string, options?: any) {
