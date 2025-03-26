@@ -52,7 +52,7 @@ export class utils {
             logger.inLog(`Executing ${command}`);
         }
         const response = execSync(command, options);
-        if (process.env.RUNNER_DEBUG) {
+        if (this.isVerbose()) {
             console.log(response.toString().trim());
         }
     }
