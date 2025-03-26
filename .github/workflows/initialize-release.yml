@@ -13,10 +13,10 @@ on:
         description: "The type of release: major, minor, or patch"
         required: true
       installDependencies:
-        type: boolean
+        type: string
         description: "Update dependencies"
-        required: false
-        default: true
+        required: true
+        default: 'true'
 
 jobs:
   initialize-release:
@@ -72,4 +72,4 @@ jobs:
             initialize-release
             --releaseType "${{ inputs.releaseType }}"
             --branch "${{ inputs.branch }}"
-            --installDependencies "${{ inputs.installDependencies }}"
+            --installDependencies "${{ inputs.installDependencies == 'true' }}"
