@@ -268,8 +268,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         }
         endVersion = endVersion.startsWith('v') || endVersion === 'HEAD' ? endVersion : 'v' + endVersion;
         let project = this.getProject(projectName);
-        logger.log(`listing commits from ${startVersion} to ${endVersion} for ${projectName}`);
-        logger.log(JSON.stringify(project));
         utils.executeCommand(`git tag --list`, { cwd: project?.dir });
         const commitMessages = utils.executeCommandWithOutput(
             `git log ${startVersion}...${endVersion} --oneline --first-parent`,
