@@ -68,8 +68,8 @@ jobs:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
           DEBUG_LOGGING: ${{ env.RUNNER_DEBUG }}
         run: |
-          npx ts-node nested-ci/src/cli.ts
-            initialize-release
-            --releaseType "${{ inputs.releaseType }}"
-            --branch "${{ inputs.branch }}"
+          npx ts-node nested-ci/src/cli.ts \
+            initialize-release \
+            --releaseType "${{ inputs.releaseType }}" \
+            --branch "${{ inputs.branch }}" \
             --installDependencies "${{ inputs.installDependencies == 'true' }}"

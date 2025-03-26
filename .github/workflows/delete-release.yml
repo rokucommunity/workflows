@@ -35,6 +35,6 @@ jobs:
         env:
            GH_TOKEN: ${{ github.token }}
         run: |
-          npx ts-node nested-ci/src/cli.ts
-            delete-release
+          npx ts-node nested-ci/src/cli.ts \
+            delete-release \
             --releaseVersion ${{ inputs.version }}
