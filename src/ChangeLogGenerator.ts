@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         }
 
         const project = this.getProject(options.project);
-        logger.log('Set the current project dir to this working directory')
+        logger.log(`Set the current project dir to this working directory: ${process.cwd()}`);
         project.dir = process.cwd();
 
         let lastTag = this.getLastTag(project.dir);
