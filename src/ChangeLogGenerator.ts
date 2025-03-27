@@ -188,7 +188,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         //build changelog entries for each new dependency
         for (const dependency of [...project.dependencies, ...project.devDependencies]) {
             if (dependency.previousReleaseVersion !== dependency.newVersion) {
-                const dependencyProject = this.getProject(dependency.name);
+                const dependencyProject = this.getProject(dependency.repoName);
                 lines.push([
                     ` - upgrade to [${dependency.name}@${dependency.newVersion}]`,
                     `(${dependencyProject.repositoryUrl}/blob/master/CHANGELOG.md#`,
