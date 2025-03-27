@@ -226,15 +226,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
                         .split(/\r?\n/)
                         .map(x => x.split(' ')[1]);
 
-                    if (
-                        dependency.newVersion !== dependency.previousReleaseVersion &&
-                        (
-                            fileChanges.includes('package.json') ||
-                            fileChanges.includes('package-lock.json')
-                        )) {
+                    if (dependency.newVersion !== dependency.previousReleaseVersion) {
                         logger.log(`Updating ${dependencyType} version for ${dependency.name} from ${dependency.previousReleaseVersion} to ${dependency.newVersion}`);
-                        utils.executeCommand(`git add package*`, { cwd: project.dir });
-                        utils.executeCommand(`git commit -m "Update ${dependencyType} version for ${dependency.name} from ${dependency.previousReleaseVersion} to ${dependency.newVersion}"`, { cwd: project.dir });
                     }
 
                 } else {

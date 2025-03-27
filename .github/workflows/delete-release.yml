@@ -24,7 +24,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@master
         with:
-          node-version: "22.9.0"
+          node-version: "16.20.2"
 
       - name: CD into nested-ci, run npm ci
         run: |

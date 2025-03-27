@@ -84,10 +84,9 @@ export class ReleaseCreator {
         await this.incrementedVersion(options.releaseType as ReleaseType);
         utils.executeCommandWithOutput(`git add package.json package-lock.json CHANGELOG.md`);
         utils.executeCommandWithOutput(`git commit -m 'Increment version to ${releaseVersion}'`);
-        utils.executeCommandWithOutput(`git tag v${releaseVersion} -m '${releaseVersion}'`);
 
         logger.log(`Push up the release branch`);
-        utils.executeCommand(`git push --atomic origin release/${releaseVersion} v${releaseVersion}`);
+        utils.executeCommand(`git push origin release/${releaseVersion}`);
 
         logger.log(`Create GitHub release for ${releaseVersion}`);
         await this.octokit.rest.repos.createRelease({
@@ -121,8 +120,8 @@ export class ReleaseCreator {
      * Replaces the release artifacts to the GitHub release
      * and add the changelog patch to the release notes
      */
-    public async uploadRelease(options: { branch: string, artifactPaths: string }) {
-        logger.log(`Upload release...branch: ${options.branch}`);
+    public async uploadRelease(options: { artifactPaths: string }) {
+        logger.log(`Upload release... artifactPaths: ${options.artifactPaths}`);
         logger.increaseIndent();
 
         logger.log(`Get the repository name`);
@@ -248,8 +247,8 @@ export class ReleaseCreator {
      * Marks the GitHub release as published 
      * and releases the artifacts to the correct store
      */
-    public async publishRelease(options: { branch: string, releaseType: string }) {
-        logger.log(`publish release...branch: ${options.branch}, releaseType: ${options.releaseType}`);
+    public async publishRelease(options: { ref: string, releaseType: string }) {
+        logger.log(`publish release...branch: ${options.ref}, releaseType: ${options.releaseType}`);
         logger.increaseIndent();
 
         logger.log(`Get the repository name`);
@@ -278,6 +277,9 @@ export class ReleaseCreator {
                 release_id: draftRelease.id,
                 draft: false
             });
+
+            utils.executeCommandWithOutput(`git tag v${releaseVersion} ${options.ref} -m '${releaseVersion}'`);
+            utils.executeCommand(`git push origin v${releaseVersion}`);
         } else {
             logger.log(`Release ${releaseVersion} is already published`);
         }

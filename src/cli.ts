@@ -25,7 +25,6 @@ let options = yargs
     })
     .command('upload-release', 'Upload release artifacts to GitHub release', (builder) => {
         return builder
-            .option('branch', { type: 'string', description: 'The branch the release is based on' })
             .option('artifactPaths', { type: 'string', description: 'The glob pattern used to get release artifact(s)' })
     }, (argv) => {
         printEnvValues();
@@ -36,7 +35,7 @@ let options = yargs
     })
     .command('publish-release', 'Publish GitHub release, push artifacts for public use', (builder) => {
         return builder
-            .option('branch', { type: 'string', description: 'The branch the release is based on' })
+            .option('ref', { type: 'string', description: 'The merge commit for the pull request' })
             .option('releaseType', { type: 'string', description: 'The store we are releasing to' })
     }, (argv) => {
         printEnvValues();

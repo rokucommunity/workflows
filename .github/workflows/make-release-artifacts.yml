@@ -3,10 +3,6 @@ name: Make Release Artifacts
 on:
    workflow_call:
     inputs:
-        branch:
-            type: string
-            description: "The branch to create the release from"
-            required: true
         node-version:
             type: string
             description: "The node version to use"
@@ -45,7 +41,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@master
         with:
-          node-version: "22.9.0"
+          node-version: "16.20.2"
 
       - name: CD into nested-ci, run npm ci
         run: |
@@ -58,5 +54,4 @@ jobs:
         run: |
           npx ts-node nested-ci/src/cli.ts \
             upload-release \
-            --branch ${{ inputs.branch }} \
             --artifactPaths ${{ inputs.artifact-paths }}
