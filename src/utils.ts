@@ -49,7 +49,7 @@ export class utils {
         }
 
         if (this.isVerbose()) {
-            logger.inLog(`Executing ${command}`);
+            logger.inLog(`Executing ${command} with ${JSON.stringify(options)}`);
         }
         const response = execSync(command, options);
         if (this.isVerbose()) {
@@ -65,7 +65,7 @@ export class utils {
         try {
             command = `${command} && echo 1`;
             if (this.isVerbose()) {
-                logger.inLog(`Executing ${command} and checking for success`);
+                logger.inLog(`Executing ${command} with ${JSON.stringify(options)} and checking for success`);
             }
             let response = execSync(command, options)?.toString().trim();
             if (this.isVerbose()) {
@@ -80,7 +80,7 @@ export class utils {
     static executeCommandWithOutput(command: string, options?: any) {
         options ??= { cwd: process.cwd() };
         if (this.isVerbose()) {
-            logger.inLog(`Executing ${command}`);
+            logger.inLog(`Executing ${command} with ${JSON.stringify(options)}`);
         }
         const response = execSync(command, options).toString().trim();
         if (this.isVerbose()) {
