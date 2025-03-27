@@ -195,7 +195,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
                     `${dependency.newVersion.replace(/\./g, '')}---${this.getVersionDate(dependencyProject.dir, dependency.newVersion)}). `,
                     `Notable changes since ${dependency.previousReleaseVersion}:`
                 ].join(''));
-                for (const commit of this.getCommitLogs(dependency.name, dependency.previousReleaseVersion, dependency.newVersion)) {
+                for (const commit of this.getCommitLogs(dependency.repoName, dependency.previousReleaseVersion, dependency.newVersion)) {
                     lines.push(`     - ${commit.message} (${getReflink(dependencyProject, commit, true)})`);
                 }
             }
