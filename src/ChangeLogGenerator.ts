@@ -132,7 +132,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
                 let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
                 if (foundDependency) {
                     projectsToClone.push(this.getProject(foundDependency.repoName));
-                    project.dependencies.push({ name: dependency, previousReleaseVersion: '', newVersion: '' });
+                    project.dependencies.push({ name: dependency, repoName: foundDependency.repoName, previousReleaseVersion: '', newVersion: '' });
                 }
             });
         }
@@ -141,7 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
                 let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
                 if (foundDependency) {
                     projectsToClone.push(this.getProject(foundDependency.repoName));
-                    project.devDependencies.push({ name: dependency, previousReleaseVersion: '', newVersion: '' });
+                    project.devDependencies.push({ name: dependency, repoName: foundDependency.repoName, previousReleaseVersion: '', newVersion: '' });
                 }
             });
         }
@@ -219,8 +219,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             for (const dependency of project[dependencyType]) {
                 dependency.previousReleaseVersion = this.getDependencyVersionFromRelease(project, latestReleaseVersion, dependency.name, dependencyType);
                 if (!dependency.previousReleaseVersion) {
-                    const dependencyProject = this.getProject(dependency.name);
-                    dependency.previousReleaseVersion = utils.executeCommandWithOutput('git rev-list --max-parents=0 HEAD', { cwd: dependencyProject.dir }).toString().trim();
+                    const dependencyProject = this.getProject(dependency.repoName);
+                    dependency.previousReleaseVersion = utils.executeCommandWithOutput('git rev-list --max-parents=0 HEAD', { cwd: dependencyProject.dir });
                 }
 
                 if (installDependencies) {
@@ -358,11 +358,13 @@ class Project {
     dir: string;
     dependencies: Array<{
         name: string;
+        repoName: string;
         previousReleaseVersion: string;
         newVersion: string;
     }>;
     devDependencies: Array<{
         name: string;
+        repoName: string;
         previousReleaseVersion: string;
         newVersion: string;
     }>;
