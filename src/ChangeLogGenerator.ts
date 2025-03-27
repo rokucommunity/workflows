@@ -330,7 +330,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         logger.log(`Cloning ${url}`);
         project.dir = s`${this.tempDir}/${repoName}`;
 
-        utils.executeCommand(`git clone --no-single-branch "${url}" "${project.dir}"`);
+        utils.executeCommand(`git clone --no-single-branch --depth=0 "${url}" "${project.dir}"`);
     }
 
     private projects: Project[] = [];
