@@ -219,15 +219,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             for (const dependency of project[dependencyType]) {
                 dependency.previousReleaseVersion = this.getDependencyVersionFromRelease(project, latestReleaseVersion, dependency.name, dependencyType);
                 if (installDependencies) {
-                    utils.executeCommand(`node --version`, { cwd: project.dir });
                     utils.executeCommand(`npm install ${dependency.name}@latest`, { cwd: project.dir });
                     dependency.newVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
 
-                    if (dependency.newVersion !== dependency.previousReleaseVersion) {
+                    const fileChanges = utils.executeCommandWithOutput(`git status --porcelain`, { cwd: project.dir })
+                        .split(/\r?\n/)
+                        .map(x => x.split(' ')[1]);
+
+                    if (
+                        dependency.newVersion !== dependency.previousReleaseVersion &&
+                        (
+                            fileChanges.includes('package.json') ||
+                            fileChanges.includes('package-lock.json')
+                        )) {
                         logger.log(`Updating ${dependencyType} version for ${dependency.name} from ${dependency.previousReleaseVersion} to ${dependency.newVersion}`);
-                        utils.executeCommand(`git status`, { cwd: project.dir });
                         utils.executeCommand(`git add package*`, { cwd: project.dir });
-                        utils.executeCommand(`git status`, { cwd: project.dir });
                         utils.executeCommand(`git commit -m "Update ${dependencyType} version for ${dependency.name} from ${dependency.previousReleaseVersion} to ${dependency.newVersion}"`, { cwd: project.dir });
                     }
 
