@@ -220,6 +220,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
                 dependency.previousReleaseVersion = this.getDependencyVersionFromRelease(project, latestReleaseVersion, dependency.name, dependencyType);
                 if (!dependency.previousReleaseVersion) {
                     const dependencyProject = this.getProject(dependency.repoName);
+                    logger.log(`Dependency project dir: ${dependencyProject.dir}`);
                     dependency.previousReleaseVersion = utils.executeCommandWithOutput('git rev-list --max-parents=0 HEAD', { cwd: dependencyProject.dir });
                 }
 
