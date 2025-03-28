@@ -48,7 +48,7 @@ export class utils {
     }
 
     static executeCommand(command: string, options?: any) {
-        options ??= { cwd: process.cwd() };
+        options = { ...options, env: process.env };
         if (!this.isVerbose()) {
             command = `${command} > /dev/null 2>&1`;
         }
@@ -56,14 +56,14 @@ export class utils {
         if (this.isVerbose()) {
             logger.inLog(`Executing ${command} with ${JSON.stringify(options)}`);
         }
-        const response = execSync(command, { ...options, env: process.env });
+        const response = execSync(command, options);
         if (this.isVerbose()) {
             console.log(response.toString().trim());
         }
     }
 
     static executeCommandSucceeds(command: string, options?: any) {
-        options ??= { cwd: process.cwd() };
+        options = { ...options, env: process.env };
         if (!this.isVerbose()) {
             command = `${command} > /dev/null 2>&1`;
         }
@@ -72,7 +72,7 @@ export class utils {
             if (this.isVerbose()) {
                 logger.inLog(`Executing ${command} with ${JSON.stringify(options)} and checking for success`);
             }
-            let response = execSync(command, { ...options, env: process.env })?.toString().trim();
+            let response = execSync(command, options)?.toString().trim();
             if (this.isVerbose()) {
                 console.log(response);
             }
@@ -83,11 +83,11 @@ export class utils {
     }
 
     static executeCommandWithOutput(command: string, options?: any) {
-        options ??= { cwd: process.cwd() };
+        options = { ...options, env: process.env };
         if (this.isVerbose()) {
             logger.inLog(`Executing ${command} with ${JSON.stringify(options)}`);
         }
-        const response = execSync(command, { ...options, env: process.env }).toString().trim();
+        const response = execSync(command, options).toString().trim();
         if (this.isVerbose()) {
             console.log(response);
         }
