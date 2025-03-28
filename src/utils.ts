@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import * as semver from 'semver';
 
 export class logger {
     private static instance: logger;
@@ -40,6 +41,10 @@ export class utils {
 
     static isVerbose(): boolean {
         return process.env.RUNNER_DEBUG === '1';
+    }
+
+    static isVersion(versionOrCommitHash: string) {
+        return semver.valid(versionOrCommitHash);
     }
 
     static executeCommand(command: string, options?: any) {

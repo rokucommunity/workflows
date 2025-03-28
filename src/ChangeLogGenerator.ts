@@ -9,6 +9,7 @@ import * as semver from 'semver';
 import fetch from 'node-fetch';
 import { logger, utils } from './utils';
 import { Octokit } from '@octokit/rest';
+import { Commit, Project, ProjectManager } from './ProjectManager';
 
 export class ChangelogGenerator {
     private tempDir = s`${__dirname}/../.tmp/.releases`;
@@ -33,32 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         logger.log('Creating tempDir', this.tempDir);
         fsExtra.emptyDirSync(this.tempDir);
 
-        logger.log('Getting all project dependencies');
-        let projects = await this.getProjectDependencies(options.project);
+        const project = await ProjectManager.setupForProject(options);
 
-        logger.log(`Cloning projects: ${projects.map(x => x.name).join(', ')}`);
-        for (const project of projects) {
-            this.cloneProject(project);
-        }
+        logger.log(`Last release was ${project.lastTag}`);
 
-        const project = this.getProject(options.project);
-        logger.log(`Set the current project dir to this working directory: ${process.cwd()}`);
-        project.dir = process.cwd();
-
-        let lastTag = this.getLastTag(project.dir);
-        let latestReleaseVersion;
-        if (!lastTag) {
-            logger.log('Not tags were found. Set the lastTag to the first commit hash');
-            lastTag = utils.executeCommandWithOutput('git rev-list --max-parents=0 HEAD', { cwd: project.dir }).toString().trim();
-            latestReleaseVersion = lastTag;
-        } else {
-            latestReleaseVersion = lastTag.replace(/^v/, '');
-        }
-        logger.log(`Last release was ${lastTag}`);
-
-        this.installDependencies(project, latestReleaseVersion, options.installDependencies, options.releaseVersion);
-
-        this.computeChanges(project, lastTag);
+        this.computeChanges(project);
 
         if (project.changes.length === 0) {
             logger.log('Nothing has changed since last release');
@@ -66,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             return;
         }
 
-        const lines = this.getChangeLogs(project, lastTag, options.releaseVersion);
+        const lines = this.getChangeLogs(project, options.releaseVersion);
         logger.log(lines)
 
         //assume the project running this command is the project being updated
@@ -92,63 +72,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         logger.decreaseIndent();
     }
 
-    private async getProjectDependencies(projectName: string) {
-        const octokit = new Octokit({
-            auth: process.env.GH_TOKEN,
-            request: { fetch }
-        });
-        logger.log(`Get all the projects from the rokucommunity org`);
-        const projects = await utils.octokitPageHelper((options: any, page: number) => {
-            return octokit.repos.listForOrg({
-                org: 'rokucommunity',
-                type: 'public',
-                per_page: utils.OCTOKIT_PER_PAGE,
-            });
-        });
-        let projectNpmNames = [];
-        logger.log(`Get all avaialble package.json for each project`);
-        const promises = projects.map(async x => {
-            const response = await octokit.repos.getContent({
-                owner: 'rokucommunity',
-                repo: x.name,
-                path: 'package.json',
-                request: { timeout: 10000 }
-            });
-            // Decode Base64 content
-            const content = Buffer.from((response.data as any).content, "base64").toString("utf-8");
-            // Parse the cleaned string into a JSON object
-            const jsonObject = JSON.parse(content);
-            projectNpmNames.push({ repoName: x.name, packageName: jsonObject.name });
-            this.projects.push(new Project(x.name, jsonObject.name, x.html_url));
-        });
-        await Promise.allSettled(promises);
-
-        logger.log(`Get the package.json for the project ${projectName}, and find the dependencies that need to be cloned`);
-        let projectPackageJson = fsExtra.readJsonSync(s`package.json`);
-        let project = this.getProject(projectName);
-        let projectsToClone: Project[] = []
-        if (projectPackageJson.dependencies) {
-            Object.keys(projectPackageJson.dependencies).forEach(dependency => {
-                let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
-                if (foundDependency) {
-                    projectsToClone.push(this.getProject(foundDependency.repoName));
-                    project.dependencies.push({ name: dependency, repoName: foundDependency.repoName, previousReleaseVersion: '', newVersion: '' });
-                }
-            });
-        }
-        if (projectPackageJson.devDependencies) {
-            Object.keys(projectPackageJson.devDependencies).forEach(dependency => {
-                let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
-                if (foundDependency) {
-                    projectsToClone.push(this.getProject(foundDependency.repoName));
-                    project.devDependencies.push({ name: dependency, repoName: foundDependency.repoName, previousReleaseVersion: '', newVersion: '' });
-                }
-            });
-        }
-        projectsToClone = [...new Set(projectsToClone)];
-        return projectsToClone;
-    }
-
     /**
      * Find the year-month-day of the specified release from git logs
      */
@@ -158,11 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         return date;
     }
 
-    private isVersion(versionOrCommitHash: string) {
-        return semver.valid(versionOrCommitHash);
-    }
-
-    private getChangeLogs(project: Project, lastTag: string, releaseVersion: string) {
+    private getChangeLogs(project: Project, releaseVersion: string) {
         const [month, day, year] = new Date().toLocaleDateString().split('/');
 
         function getReflink(project: Project, commit: Commit, includeProjectName = false) {
@@ -177,18 +96,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
         const lines = [
             '', '', '', '',
-            `## [${releaseVersion}](${project.repositoryUrl}/compare/${lastTag}...v${releaseVersion}) - ${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
+            `## [${releaseVersion}](${project.repositoryUrl}/compare/${project.lastTag}...v${releaseVersion}) - ${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
             `### Changed`
         ];
         //add lines for each commit since last release
-        for (const commit of this.getCommitLogs(project.name, lastTag, 'HEAD')) {
+        for (const commit of this.getCommitLogs(project.name, project.lastTag, 'HEAD')) {
             lines.push(` - ${commit.message} (${getReflink(project, commit)})`);
         }
 
         //build changelog entries for each new dependency
         for (const dependency of [...project.dependencies, ...project.devDependencies]) {
             if (dependency.previousReleaseVersion !== dependency.newVersion) {
-                const dependencyProject = this.getProject(dependency.repoName);
+                const dependencyProject = ProjectManager.getProject(dependency.repoName);
                 lines.push([
                     ` - upgrade to [${dependency.name}@${dependency.newVersion}]`,
                     `(${dependencyProject.repositoryUrl}/blob/master/CHANGELOG.md#`,
@@ -203,54 +122,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
         return lines;
     }
-
-    private getDependencyVersionFromRelease(project: Project, releaseVersion: string, packageName: string, dependencyType: 'dependencies' | 'devDependencies') {
-        const ref = this.isVersion(releaseVersion) ? `v${releaseVersion}` : releaseVersion;
-        const output = utils.executeCommandWithOutput(`git show ${ref}:package.json`, { cwd: project.dir }).toString();
-        const packageJson = JSON.parse(output);
-        const version = packageJson?.[dependencyType][packageName];
-        return /\d+\.\d+\.\d+/.exec(version)?.[0] as string;
-    }
-
-    private installDependencies(project: Project, latestReleaseVersion: string, installDependencies: boolean, releaseVersion: string) {
-        logger.log('installing', project.dependencies.length, 'dependencies and', project.devDependencies.length, 'devDependencies');
-
-        const install = (project: Project, dependencyType: 'dependencies' | 'devDependencies', flags?: string) => {
-            for (const dependency of project[dependencyType]) {
-                dependency.previousReleaseVersion = this.getDependencyVersionFromRelease(project, latestReleaseVersion, dependency.name, dependencyType);
-                if (!dependency.previousReleaseVersion) {
-                    const dependencyProject = this.getProject(dependency.repoName);
-                    logger.log(`Dependency project dir: ${dependencyProject.dir}`);
-                    dependency.previousReleaseVersion = utils.executeCommandWithOutput('git rev-list --max-parents=0 HEAD', { cwd: dependencyProject.dir });
-                }
-
-                if (installDependencies) {
-                    utils.executeCommand(`npm install ${dependency.name}@latest`, { cwd: project.dir });
-                    dependency.newVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
-
-                    const fileChanges = utils.executeCommandWithOutput(`git status --porcelain`, { cwd: project.dir })
-                        .split(/\r?\n/)
-                        .map(x => x.split(' ')[1]);
-
-                    if (dependency.newVersion !== dependency.previousReleaseVersion) {
-                        logger.log(`Updating ${dependencyType} version for ${dependency.name} from ${dependency.previousReleaseVersion} to ${dependency.newVersion}`);
-                    }
-
-                } else {
-                    dependency.newVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
-                }
-            }
-        };
-
-        utils.executeCommand(`npm install`, { cwd: project.dir });
-
-        install(project, 'dependencies');
-        install(project, 'devDependencies', '--save-dev');
-    }
-
-    private computeChanges(project: Project, lastTag: string) {
+    private computeChanges(project: Project) {
         project.changes.push(
-            ...this.getCommitLogs(project.name, lastTag, 'HEAD')
+            ...this.getCommitLogs(project.name, project.lastTag, 'HEAD')
         );
         //get commits from any changed dependencies
         for (const dependency of [...project.dependencies, ...project.devDependencies]) {
@@ -263,19 +137,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         }
     }
 
-    /**
-     * Get the project with the specified name
-     */
-    private getProject(projectName: string) {
-        return this.projects.find(x => x.name === projectName)!;
-    }
-
     private getCommitLogs(projectName: string, startVersion: string, endVersion: string) {
-        if (this.isVersion(startVersion)) {
+        if (utils.isVersion(startVersion)) {
             startVersion = startVersion.startsWith('v') ? startVersion : 'v' + startVersion;
         }
         endVersion = endVersion.startsWith('v') || endVersion === 'HEAD' ? endVersion : 'v' + endVersion;
-        let project = this.getProject(projectName);
+        let project = ProjectManager.getProject(projectName);
         utils.executeCommand(`git tag --list`, { cwd: project?.dir });
         const commitMessages = utils.executeCommandWithOutput(
             `git log ${startVersion}...${endVersion} --oneline --first-parent`,
@@ -301,24 +168,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         return commitMessages;
     }
 
-    /**
-     * Find the highest non-prerelease tag for this repository
-     */
-    private getLastTag(cwd: string) {
-        const allTags = semver.sort(
-            utils.executeCommandWithOutput(`git tag --sort version:refname`, { cwd: cwd })
-                .toString()
-                .split(/\r?\n/)
-                .map(x => x.trim())
-                //only keep valid version tags
-                .filter(x => semver.valid(x))
-                //exclude prerelease versions
-                .filter(x => !semver.prerelease(x))
-        ).reverse();
-
-        return allTags[0];
-    }
-
     private cloneProject(project: Project) {
         const repoName = project.name.split('/').pop();
 
@@ -332,52 +181,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
         utils.executeCommand(`git clone --no-single-branch "${url}" "${project.dir}"`);
     }
-
-    private projects: Project[] = [];
-}
-
-
-class Project {
-    constructor(name: string, npmName?: string, repositoryUrl?: string) {
-        this.name = name;
-        this.npmName = npmName;
-        this.repositoryUrl = repositoryUrl ?? `https://github.com/rokucommunity/${name}`;
-        this.dependencies = [];
-        this.devDependencies = [];
-        this.changes = [];
-    }
-
-    name: string;
-    /**
-     * The name of the package on npm. Defaults to `project.name`
-     */
-    npmName: string;
-    repositoryUrl: string;
-    /**
-     * The directory where this project is cloned.
-     */
-    dir: string;
-    dependencies: Array<{
-        name: string;
-        repoName: string;
-        previousReleaseVersion: string;
-        newVersion: string;
-    }>;
-    devDependencies: Array<{
-        name: string;
-        repoName: string;
-        previousReleaseVersion: string;
-        newVersion: string;
-    }>;
-    /**
-     * A list of changes to be included in the changelog. If non-empty, this indicates the package needs a new release
-     */
-    changes: Commit[];
-}
-
-interface Commit {
-    hash: string;
-    branchInfo: string;
-    message: string;
-    prNumber: string;
 }
