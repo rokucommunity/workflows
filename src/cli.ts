@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import * as yargs from 'yargs';
 import * as path from 'path';
+import * as dotenv from 'dotenv';
 import { execSync } from 'child_process';
 import { ReleaseCreator } from './ReleaseCreator';
 import { ChangelogGenerator } from './ChangeLogGenerator';
@@ -63,6 +64,7 @@ let options = yargs
 
 
 function preSetup(argv: any) {
+    dotenv.config();
     logger.log('Environment Variables:');
     logger.inLog(`RUNNER_DEBUG: ${process.env.RUNNER_DEBUG}`);
 

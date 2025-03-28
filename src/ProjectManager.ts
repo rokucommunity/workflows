@@ -1,8 +1,9 @@
+import fetch from 'node-fetch';
+import * as fsExtra from 'fs-extra';
+import * as semver from 'semver';
 import { standardizePath as s } from 'brighterscript';
 import { logger, utils } from './utils';
 import { Octokit } from '@octokit/rest';
-import * as fsExtra from 'fs-extra';
-import * as semver from 'semver';
 
 /**
  * ProjectManager 
@@ -20,11 +21,16 @@ export class ProjectManager {
 
     public static async setupForProject(options: { projectName: string, installDependencies: boolean }) {
         const instance = ProjectManager.getInstance();
+
+        logger.log('Creating tempDir', instance.tempDir);
+        fsExtra.emptyDirSync(instance.tempDir);
+
         if (instance.projects.length > 0) {
             logger.log('Projects have already been setup. Skipping');
             return ProjectManager.getProject(options.projectName);
         }
-        logger.log('Getting all project dependencies');
+
+        logger.log(`Getting all project ${options.projectName} dependencies`);
         let projects = await instance.getProjectDependencies(options.projectName);
 
         logger.log(`Cloning projects: ${projects.map(x => x.name).join(', ')}`);
@@ -91,10 +97,13 @@ export class ProjectManager {
         });
         await Promise.allSettled(promises);
 
-        logger.log(`Get the package.json for the project ${projectName}, and find the dependencies that need to be cloned`);
-        let projectPackageJson = fsExtra.readJsonSync(s`package.json`);
+        logger.log(`Get the project ${projectName} and clone it`);
         let project = ProjectManager.getProject(projectName);
-        let projectsToClone: Project[] = [project];
+        ProjectManager.getInstance().cloneProject(project);
+
+        logger.log(`Get the package.json for the project ${projectName}, and find the dependencies that need to be cloned`);
+        let projectPackageJson = fsExtra.readJsonSync(s`${project.dir}/package.json`).version;
+        let projectsToClone: Project[] = [];
         if (projectPackageJson.dependencies) {
             Object.keys(projectPackageJson.dependencies).forEach(dependency => {
                 let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
@@ -133,7 +142,10 @@ export class ProjectManager {
 
     private getDependencyVersionFromRelease(project: Project, releaseVersion: string, packageName: string, dependencyType: 'dependencies' | 'devDependencies') {
         const ref = utils.isVersion(releaseVersion) ? `v${releaseVersion}` : releaseVersion;
-        const output = utils.executeCommandWithOutput(`git show ${ref}:package.json`, { cwd: project.dir }).toString();
+        const output = utils.tryExecuteCommandWithOutput(`git show ${ref}:package.json`, { cwd: project.dir }).toString();
+        if (!output) {
+            return '';
+        }
         const packageJson = JSON.parse(output);
         const version = packageJson?.[dependencyType][packageName];
         return /\d+\.\d+\.\d+/.exec(version)?.[0] as string;
@@ -153,6 +165,7 @@ export class ProjectManager {
 
                 if (installDependencies) {
                     utils.executeCommand(`npm install ${dependency.name}@latest`, { cwd: project.dir });
+
                     dependency.newVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
 
                     const fileChanges = utils.executeCommandWithOutput(`git status --porcelain`, { cwd: project.dir })

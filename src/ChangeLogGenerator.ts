@@ -25,9 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         logger.log(`Updating changelog for project ${options.projectName}`);
         logger.increaseIndent();
 
-        logger.log('Creating tempDir', this.tempDir);
-        fsExtra.emptyDirSync(this.tempDir);
-
         //The projects are already setup in the releaseCreator class
         const project = await ProjectManager.getProject(options.projectName);
 

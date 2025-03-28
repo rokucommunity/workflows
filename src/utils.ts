@@ -94,6 +94,14 @@ export class utils {
         return response;
     }
 
+    static tryExecuteCommandWithOutput(command: string, options?: any) {
+        try {
+            return this.executeCommandWithOutput(command, options);
+        } catch (e) {
+            return '';
+        }
+    }
+
     static async octokitPageHelper<T>(api: (options: any, page: number) => Promise<{ data: T[] }>, options = {}): Promise<T[]> {
         let getMorePages = true;
         let page = 1;
