@@ -81,7 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             if (commit.prNumber) {
                 return `[${preHashName ?? ''}#${commit.prNumber}](${project.repositoryUrl}/pull/${commit.prNumber})`;
             } else {
-                preHashName = preHashName ? '#' + preHashName : '';
+                preHashName = preHashName ? preHashName + '#' : '';
                 return `[${preHashName}${commit.hash}](${project.repositoryUrl}/commit/${commit.hash})`;
             }
         }
@@ -98,7 +98,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
         //build changelog entries for each new dependency
         for (const dependency of [...project.dependencies, ...project.devDependencies]) {
-            if (dependency.previousReleaseVersion !== dependency.newVersion) {
+            if (!utils.isVersion(dependency.previousReleaseVersion)) {
+                lines.push(` - added [${dependency.name}@${dependency.newVersion}](${ProjectManager.getProject(dependency.repoName).repositoryUrl})`);
+            } else if (dependency.previousReleaseVersion !== dependency.newVersion) {
                 const dependencyProject = ProjectManager.getProject(dependency.repoName);
                 lines.push([
                     ` - upgrade to [${dependency.name}@${dependency.newVersion}]`,
