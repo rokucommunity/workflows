@@ -34,23 +34,23 @@ export class ReleaseCreator {
      * updating the changelog and version, creating a release pull request
      * and creating a GitHub release
      */
-    public async initializeRelease(options: { releaseType: ReleaseType | string, branch: string, installDependencies: boolean }) {
+    public async initializeRelease(options: { releaseType: ReleaseType | string, branch: string, installDependencies: boolean, testRun?: boolean }) {
         logger.log(`Intialize release... releaseType: ${options.releaseType}, branch: ${options.branch}`);
         logger.increaseIndent();
 
         logger.log(`Checking for a clean repository`);
         if (!utils.executeCommandSucceeds('git diff --quiet')) {
-            throw new Error('Repository is not clean');
+            utils.throwError('Repository is not clean', options);
         }
 
         logger.log(`Checkout branch ${options.branch}`);
         if (!utils.executeCommandSucceeds(`git checkout --quiet ${options.branch}`)) {
-            throw new Error(`Branch ${options.branch} does not exist`);
+            utils.throwError(`Branch ${options.branch} does not exist`, options);
         }
 
         logger.log(`Fetch all branches`);
         if (!utils.executeCommandSucceeds(`git fetch origin`)) {
-            throw new Error(`Failed to fetch origin`);
+            utils.throwError(`Failed to fetch origin`, options);
         }
 
         logger.log(`Get the incremented release version`);
@@ -62,12 +62,12 @@ export class ReleaseCreator {
         const releases = await this.listGitHubReleases(repoName);
         logger.log(`Check if a GitHub release already exists for ${releaseVersion}`);
         if (releases.find(r => r.tag_name === releaseVersion)) {
-            throw new Error(`Release ${releaseVersion} already exists`);
+            utils.throwError(`Release ${releaseVersion} already exists`, options);
         }
 
         logger.log(`Create new release branch release/${releaseVersion}`);
         if (!utils.executeCommandSucceeds(`git checkout -b release/${releaseVersion}`)) {
-            throw new Error(`Cannot create release branch release/${releaseVersion}`);
+            utils.throwError(`Cannot create release branch release/${releaseVersion}`, options);
         }
 
         logger.log(`Update the changelog`);
@@ -79,6 +79,12 @@ export class ReleaseCreator {
             console.error(e);
             process.exit(1);
         });
+
+        if (options.testRun) {
+            logger.log(`TEST RUN: Skip commit and push`);
+            logger.decreaseIndent();
+            return;
+        }
 
         logger.log(`Create commit with version increment and changelog updates`);
         await this.incrementedVersion(options.releaseType as ReleaseType);

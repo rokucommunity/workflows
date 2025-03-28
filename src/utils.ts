@@ -112,4 +112,12 @@ export class utils {
         }
         return data;
     }
+
+    static throwError(message: string, options?: any) {
+        if (options?.testRun) {
+            logger.log(`TEST RUN: By-passing error: ${message}`);
+            return;
+        }
+        throw new Error(message);
+    }
 }
