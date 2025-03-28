@@ -9,6 +9,7 @@ import { logger } from './utils';
 let options = yargs
     .command('initialize-release', 'Initialize a release PR, draft GitHub release', (builder) => {
         return builder
+            .option('projectName', { type: 'string', description: 'The name of the project to create the release for' })
             .option('branch', { type: 'string', description: 'The branch to create the release from' })
             .option('releaseType', { type: 'string', description: 'The version number to use for creating the release' })
             .option('installDependencies', { type: 'boolean', description: 'Install dependencies before running the release' })
@@ -19,18 +20,14 @@ let options = yargs
             process.exit(1);
         }
         printEnvValues();
-        new ReleaseCreator().initializeRelease({
-            branch: argv.branch,
-            releaseType: argv.releaseType,
-            installDependencies: argv.installDependencies,
-            testRun: argv.testRun
-        }).catch(e => {
+        new ReleaseCreator().initializeRelease(argv).catch(e => {
             console.error(e);
             process.exit(1);
         });
     })
     .command('upload-release', 'Upload release artifacts to GitHub release', (builder) => {
         return builder
+            .option('projectName', { type: 'string', description: 'The name of the project to create the release for' })
             .option('artifactPaths', { type: 'string', description: 'The glob pattern used to get release artifact(s)' })
     }, (argv) => {
         printEnvValues();
@@ -41,6 +38,7 @@ let options = yargs
     })
     .command('publish-release', 'Publish GitHub release, push artifacts for public use', (builder) => {
         return builder
+            .option('projectName', { type: 'string', description: 'The name of the project to create the release for' })
             .option('ref', { type: 'string', description: 'The merge commit for the pull request' })
             .option('releaseType', { type: 'string', description: 'The store we are releasing to' })
     }, (argv) => {
@@ -52,6 +50,7 @@ let options = yargs
     })
     .command('delete-release', 'Delete GitHub release, close pull request, and delete branch', (builder) => {
         return builder
+            .option('projectName', { type: 'string', description: 'The name of the project to create the release for' })
             .option('releaseVersion', { type: 'string', description: 'The version the release is based on' })
     }, (argv) => {
         printEnvValues();

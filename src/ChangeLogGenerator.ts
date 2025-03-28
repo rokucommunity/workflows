@@ -14,12 +14,6 @@ import { Commit, Project, ProjectManager } from './ProjectManager';
 export class ChangelogGenerator {
     private tempDir = s`${__dirname}/../.tmp/.releases`;
 
-    private options: {
-        project: string;
-        releaseVersion: string;
-        installDependencies: boolean;
-    };
-
     static MARKER = 'this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).';
     static HEADER = `# Changelog
 All notable changes to this project will be documented in this file.
@@ -27,14 +21,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).`
 
-    public async updateChangeLog(options: ChangelogGenerator['options']) {
-        logger.log(`Updating changelog for project ${options.project}`);
+    public async updateChangeLog(options: { projectName: string, releaseVersion: string }) {
+        logger.log(`Updating changelog for project ${options.projectName}`);
         logger.increaseIndent();
 
         logger.log('Creating tempDir', this.tempDir);
         fsExtra.emptyDirSync(this.tempDir);
 
-        const project = await ProjectManager.setupForProject(options);
+        //The projects are already setup in the releaseCreator class
+        const project = await ProjectManager.getProject(options.projectName);
 
         logger.log(`Last release was ${project.lastTag}`);
 

@@ -18,21 +18,21 @@ export class ProjectManager {
 
     private projects: Project[] = [];
 
-    public static async setupForProject(options: { project: string, installDependencies: boolean }) {
+    public static async setupForProject(options: { projectName: string, installDependencies: boolean }) {
         const instance = ProjectManager.getInstance();
         if (instance.projects.length > 0) {
             logger.log('Projects have already been setup. Skipping');
-            return ProjectManager.getProject(options.project);
+            return ProjectManager.getProject(options.projectName);
         }
         logger.log('Getting all project dependencies');
-        let projects = await instance.getProjectDependencies(options.project);
+        let projects = await instance.getProjectDependencies(options.projectName);
 
         logger.log(`Cloning projects: ${projects.map(x => x.name).join(', ')}`);
         for (const project of projects) {
             instance.cloneProject(project);
         }
 
-        const project = ProjectManager.getProject(options.project);
+        const project = ProjectManager.getProject(options.projectName);
 
         project.lastTag = instance.getLastTag(project.dir);
         let latestReleaseVersion;
