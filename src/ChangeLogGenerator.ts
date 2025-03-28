@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         logger.log(lines)
 
         //assume the project running this command is the project being updated
-        const changelogPath = s`CHANGELOG.md`;
+        const changelogPath = s`${project.dir}/CHANGELOG.md`;
 
         if (!fsExtra.existsSync(changelogPath)) {
             logger.log('No changelog.md file found. Creating one');
