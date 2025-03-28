@@ -36,6 +36,14 @@ jobs:
         run: |
           cd nested-ci
           npm ci
+
+      - name: Set RUNNER_DEBUG env variable
+        run: |
+          if [[ "$RUNNER_DEBUG" == "1" ]]; then
+            echo "RUNNER_DEBUG=true" >> $GITHUB_ENV
+          else
+            echo "RUNNER_DEBUG=false" >> $GITHUB_ENV
+          fi
     
       - name: Run publish
         env:
