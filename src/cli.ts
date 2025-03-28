@@ -19,7 +19,7 @@ let options = yargs
             console.error(`Invalid release version. Must be one of 'major', 'minor', or 'patch'`);
             process.exit(1);
         }
-        printEnvValues();
+        argv = preSetup(argv);
         new ReleaseCreator().initializeRelease(argv).catch(e => {
             console.error(e);
             process.exit(1);
@@ -30,7 +30,7 @@ let options = yargs
             .option('projectName', { type: 'string', description: 'The name of the project to create the release for' })
             .option('artifactPaths', { type: 'string', description: 'The glob pattern used to get release artifact(s)' })
     }, (argv) => {
-        printEnvValues();
+        argv = preSetup(argv);
         new ReleaseCreator().uploadRelease(argv).catch(e => {
             console.error(e);
             process.exit(1);
@@ -42,7 +42,7 @@ let options = yargs
             .option('ref', { type: 'string', description: 'The merge commit for the pull request' })
             .option('releaseType', { type: 'string', description: 'The store we are releasing to' })
     }, (argv) => {
-        printEnvValues();
+        argv = preSetup(argv);
         new ReleaseCreator().publishRelease(argv).catch(e => {
             console.error(e);
             process.exit(1);
@@ -53,7 +53,7 @@ let options = yargs
             .option('projectName', { type: 'string', description: 'The name of the project to create the release for' })
             .option('releaseVersion', { type: 'string', description: 'The version the release is based on' })
     }, (argv) => {
-        printEnvValues();
+        argv = preSetup(argv);
         new ReleaseCreator().deleteRelease(argv).catch(e => {
             console.error(e);
             process.exit(1);
@@ -62,7 +62,14 @@ let options = yargs
     .argv;
 
 
-function printEnvValues() {
+function preSetup(argv: any) {
     logger.log('Environment Variables:');
     logger.inLog(`RUNNER_DEBUG: ${process.env.RUNNER_DEBUG}`);
+
+    if ('projectName' in argv) {
+        if (argv.projectName.includes('/')) {
+            argv.projectName = argv.projectName.split('/')[1];
+        }
+    }
+    return argv;
 }

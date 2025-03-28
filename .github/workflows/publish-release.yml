@@ -53,5 +53,6 @@ jobs:
         run: |
           npx ts-node nested-ci/src/cli.ts \
             publish-release \
+            --projectName "${{ github.repository }}" \
             --ref ${{ inputs.branch }} \
             --releaseType ${{ inputs.release-type }}

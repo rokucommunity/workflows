@@ -37,4 +37,5 @@ jobs:
         run: |
           npx ts-node nested-ci/src/cli.ts \
             delete-release \
+            --projectName "${{ github.repository }}" \
             --releaseVersion ${{ inputs.version }}

@@ -71,6 +71,7 @@ jobs:
         run: |
           npx ts-node nested-ci/src/cli.ts \
             initialize-release \
+            --projectName "${{ github.repository }}" \
             --releaseType "${{ inputs.releaseType }}" \
             --branch "${{ inputs.branch }}" \
             --installDependencies "${{ inputs.installDependencies == 'true' }}"
