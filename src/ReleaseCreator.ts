@@ -440,7 +440,7 @@ export class ReleaseCreator {
     private async incrementedVersion(releaseType: ReleaseType, dir: string) {
         const version = await this.getNewVersion(releaseType, dir);
         logger.log(`Increment version on package.json to ${version}`);
-        utils.executeCommand(`npm version ${version} --no-commit-hooks --no-git-tag-version --ignore-scripts`);
+        utils.executeCommand(`npm version ${version} --no-commit-hooks --no-git-tag-version --ignore-scripts`, { cwd: dir });
 
         return version;
     }

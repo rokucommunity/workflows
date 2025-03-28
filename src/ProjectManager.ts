@@ -21,24 +21,27 @@ export class ProjectManager {
 
     public static async setupForProject(options: { projectName: string, installDependencies: boolean }) {
         const instance = ProjectManager.getInstance();
-
-        logger.log('Creating tempDir', instance.tempDir);
-        fsExtra.emptyDirSync(instance.tempDir);
-
         if (instance.projects.length > 0) {
             logger.log('Projects have already been setup. Skipping');
             return ProjectManager.getProject(options.projectName);
         }
 
+        logger.log('Creating tempDir', instance.tempDir);
+        fsExtra.emptyDirSync(instance.tempDir);
+
+
         logger.log(`Getting all project ${options.projectName} dependencies`);
         let projects = await instance.getProjectDependencies(options.projectName);
+
+        const project = ProjectManager.getProject(options.projectName);
+        logger.log(`Setting up git config user name and email for project ${project.name}`);
+        utils.executeCommand(`git config user.name "rokucommunity-bot"`, { cwd: project.dir });
+        utils.executeCommand(`git config user.email "93661887+rokucommunity-bot@users.noreply.github.com"`, { cwd: project.dir });
 
         logger.log(`Cloning projects: ${projects.map(x => x.name).join(', ')}`);
         for (const project of projects) {
             instance.cloneProject(project);
         }
-
-        const project = ProjectManager.getProject(options.projectName);
 
         project.lastTag = instance.getLastTag(project.dir);
         let latestReleaseVersion;

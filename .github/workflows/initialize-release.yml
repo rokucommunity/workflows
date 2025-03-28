@@ -42,11 +42,6 @@ jobs:
           app_id: ${{ secrets.BOT_APP_ID }}
           private_key: ${{ secrets.BOT_PRIVATE_KEY }}`
 
-      - name: Setup bot
-        run: |
-            git config user.name "rokucommunity-bot"
-            git config user.email "93661887+rokucommunity-bot@users.noreply.github.com"
-
       - name: Set RUNNER_DEBUG env variable
         run: |
           if [[ "$RUNNER_DEBUG" == "1" ]]; then
