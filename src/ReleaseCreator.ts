@@ -89,6 +89,8 @@ export class ReleaseCreator {
         utils.executeCommandWithOutput(`git add package.json package-lock.json CHANGELOG.md`, { cwd: project.dir });
         utils.executeCommandWithOutput(`git commit -m 'Increment version to ${releaseVersion}'`, { cwd: project.dir });
 
+        utils.executeCommand(`git config --list`);
+        utils.executeCommand(`git config --list`, { cwd: project.dir });
         logger.log(`Push up the release branch`);
         utils.executeCommand(`git push origin release/${releaseVersion}`, { cwd: project.dir });
 
