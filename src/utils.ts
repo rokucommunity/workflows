@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import * as semver from 'semver';
 
 export class logger {
     private static instance: logger;
@@ -40,6 +41,10 @@ export class utils {
 
     static isVerbose(): boolean {
         return process.env.RUNNER_DEBUG === '1';
+    }
+
+    static isVersion(versionOrCommitHash: string) {
+        return semver.valid(versionOrCommitHash);
     }
 
     static executeCommand(command: string, options?: any) {
@@ -89,6 +94,14 @@ export class utils {
         return response;
     }
 
+    static tryExecuteCommandWithOutput(command: string, options?: any) {
+        try {
+            return this.executeCommandWithOutput(command, options);
+        } catch (e) {
+            return '';
+        }
+    }
+
     static async octokitPageHelper<T>(api: (options: any, page: number) => Promise<{ data: T[] }>, options = {}): Promise<T[]> {
         let getMorePages = true;
         let page = 1;
@@ -106,5 +119,13 @@ export class utils {
             page++;
         }
         return data;
+    }
+
+    static throwError(message: string, options?: any) {
+        if (options?.testRun) {
+            logger.log(`TEST RUN: By-passing error: ${message}`);
+            return;
+        }
+        throw new Error(message);
     }
 }

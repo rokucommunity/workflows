@@ -16,26 +16,18 @@ jobs:
   publish-release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout caller repo
-        uses: actions/checkout@master
-        with:
-          ref: ${{ inputs.branch }}
-
       - name: Checkout .github repo
         uses: actions/checkout@master
         with:
           repository: rokucommunity/workflows
-          path: nested-ci
 
       - name: Setup node
         uses: actions/setup-node@master
         with:
           node-version: "16.20.2"
 
-      - name: CD into nested-ci, run npm ci
-        run: |
-          cd nested-ci
-          npm ci
+      - name: Run npm ci
+        run: npm ci
 
       - name: Set RUNNER_DEBUG env variable
         run: |
@@ -51,7 +43,8 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
         run: |
-          npx ts-node nested-ci/src/cli.ts \
+          npx ts-node src/cli.ts \
             publish-release \
+            --projectName "${{ github.repository }}" \
             --ref ${{ inputs.branch }} \
             --releaseType ${{ inputs.release-type }}

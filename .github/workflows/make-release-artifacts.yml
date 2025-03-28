@@ -62,4 +62,5 @@ jobs:
         run: |
           npx ts-node nested-ci/src/cli.ts \
             upload-release \
+            --projectName "${{ github.repository }}" \
             --artifactPaths ${{ inputs.artifact-paths }}
