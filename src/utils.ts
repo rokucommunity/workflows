@@ -56,7 +56,7 @@ export class utils {
         if (this.isVerbose()) {
             logger.inLog(`Executing ${command} with ${JSON.stringify(options)}`);
         }
-        const response = execSync(command, options);
+        const response = execSync(command, { ...options, env: process.env });
         if (this.isVerbose()) {
             console.log(response.toString().trim());
         }
@@ -72,7 +72,7 @@ export class utils {
             if (this.isVerbose()) {
                 logger.inLog(`Executing ${command} with ${JSON.stringify(options)} and checking for success`);
             }
-            let response = execSync(command, options)?.toString().trim();
+            let response = execSync(command, { ...options, env: process.env })?.toString().trim();
             if (this.isVerbose()) {
                 console.log(response);
             }
@@ -87,7 +87,7 @@ export class utils {
         if (this.isVerbose()) {
             logger.inLog(`Executing ${command} with ${JSON.stringify(options)}`);
         }
-        const response = execSync(command, options).toString().trim();
+        const response = execSync(command, { ...options, env: process.env }).toString().trim();
         if (this.isVerbose()) {
             console.log(response);
         }
