@@ -39,7 +39,7 @@ export class ProjectManager {
         utils.executeCommand(`git config user.email "93661887+rokucommunity-bot@users.noreply.github.com"`, { cwd: project.dir });
 
         logger.log(`Setting up git remote origin for project ${project.name}`);
-        const repoUrl = project.repositoryUrl.replace('https://', `https://${process.env.GH_TOKEN}@`);
+        const repoUrl = project.repositoryUrl.replace('https://', `https://x-access-token:${process.env.GH_TOKEN}@`);
         utils.executeCommand(`git remote set-url origin ${repoUrl}`, { cwd: project.dir });
 
         logger.log(`Cloning projects: ${projects.map(x => x.name).join(', ')}`);
