@@ -4,6 +4,7 @@ import * as semver from 'semver';
 import * as dotenv from 'dotenv';
 import * as fastGlob from 'fast-glob';
 import fetch from 'node-fetch';
+import { standardizePath as s } from 'brighterscript';
 import { option } from 'yargs';
 import { logger, utils } from './utils';
 import { Octokit } from '@octokit/rest';
@@ -89,8 +90,6 @@ export class ReleaseCreator {
         utils.executeCommandWithOutput(`git add package.json package-lock.json CHANGELOG.md`, { cwd: project.dir });
         utils.executeCommandWithOutput(`git commit -m 'Increment version to ${releaseVersion}'`, { cwd: project.dir });
 
-        utils.executeCommand(`git config --list`);
-        utils.executeCommand(`git config --list`, { cwd: project.dir });
         logger.log(`Push up the release branch`);
         utils.executeCommand(`git push origin release/${releaseVersion}`, { cwd: project.dir });
 
@@ -313,7 +312,7 @@ export class ReleaseCreator {
 
             const buffer = Buffer.from(new Uint8Array(assetResponse.data as any));
 
-            await fsExtra.writeFileSync(asset.name, buffer, { cwd: project.dir });
+            await fsExtra.writeFileSync(s`${project.dir}/${asset.name}`, buffer);
         }
 
 
