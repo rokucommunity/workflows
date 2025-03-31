@@ -324,7 +324,7 @@ export class ReleaseCreator {
 
         logger.log(`Publishing artifacts`);
         if (options.releaseType === 'npm') {
-            const packageName = this.getPackageName(project.dir);
+            const packageName = await this.getPackageName(project.dir);
             const versions = utils.executeCommandWithOutput(`npm view ${packageName} versions --json`).toString();
             const json = JSON.parse(versions);
             if (!json.includes(releaseVersion)) {
@@ -334,7 +334,7 @@ export class ReleaseCreator {
                 logger.inLog(`Version ${releaseVersion} already exists in npm`);
             }
         } else if (options.releaseType === 'vsce') {
-            const vsceName = this.getVscePackageName(project.dir);
+            const vsceName = await this.getVscePackageName(project.dir);
             { //Scope for vscode
                 const versions = utils.executeCommandWithOutput(`npx @vscode/vsce show ${vsceName} --json`).toString();
                 const json = JSON.parse(versions);
