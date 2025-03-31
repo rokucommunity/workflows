@@ -49,10 +49,6 @@ export class utils {
 
     static executeCommand(command: string, options?: any) {
         options = { ...options, env: process.env };
-        if (!this.isVerbose()) {
-            command = `${command} > /dev/null 2>&1`;
-        }
-
         if (this.isVerbose()) {
             logger.inLog(`Executing ${command} with ${JSON.stringify(options)}`);
         }
@@ -64,9 +60,6 @@ export class utils {
 
     static executeCommandSucceeds(command: string, options?: any) {
         options = { ...options, env: process.env };
-        if (!this.isVerbose()) {
-            command = `${command} > /dev/null 2>&1`;
-        }
         try {
             command = `${command} && echo 1`;
             if (this.isVerbose()) {
