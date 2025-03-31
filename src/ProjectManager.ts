@@ -41,9 +41,11 @@ export class ProjectManager {
         const repoUrl = project.repositoryUrl.replace('https://', `https://x-access-token:${process.env.GH_TOKEN}@`);
         utils.executeCommand(`git remote set-url origin ${repoUrl}`, { cwd: project.dir });
 
-        logger.log(`Cloning projects: ${projectDependencies.map(x => x.name).join(', ')}`);
-        for (const project of projectDependencies) {
-            instance.cloneProject(project);
+        if (projectDependencies.length !== 0) {
+            logger.log(`Cloning projects: ${projectDependencies.map(x => x.name).join(', ')}`);
+            for (const project of projectDependencies) {
+                instance.cloneProject(project);
+            }
         }
 
         return project;
