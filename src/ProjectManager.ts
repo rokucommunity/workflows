@@ -46,7 +46,11 @@ export class ProjectManager {
             instance.cloneProject(project);
         }
 
-        project.lastTag = instance.getLastTag(project.dir);
+        return project;
+    }
+
+    public static async installDependencies(project: Project, installDependencies: boolean) {
+        project.lastTag = ProjectManager.getInstance().getLastTag(project.dir);
         let latestReleaseVersion;
         if (!project.lastTag) {
             logger.log('Not tags were found. Set the lastTag to the first commit hash');
@@ -55,8 +59,7 @@ export class ProjectManager {
         } else {
             latestReleaseVersion = project.lastTag.replace(/^v/, '');
         }
-        ProjectManager.installDependencies(project, latestReleaseVersion, options.installDependencies);
-        return project;
+        ProjectManager.innerInstallDependencies(project, latestReleaseVersion, installDependencies);
     }
 
     public static getProject(projectName: string) {
@@ -157,7 +160,7 @@ export class ProjectManager {
         return /\d+\.\d+\.\d+/.exec(version)?.[0] as string;
     }
 
-    public static installDependencies(project: Project, latestReleaseVersion: string, installDependencies: boolean) {
+    public static innerInstallDependencies(project: Project, latestReleaseVersion: string, installDependencies: boolean) {
         logger.log('installing', project.dependencies.length, 'dependencies and', project.devDependencies.length, 'devDependencies');
 
         const install = (project: Project, dependencyType: 'dependencies' | 'devDependencies', flags?: string) => {

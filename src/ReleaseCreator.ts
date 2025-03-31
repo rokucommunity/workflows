@@ -71,6 +71,8 @@ export class ReleaseCreator {
             utils.throwError(`Cannot create release branch release/${releaseVersion}`, options);
         }
 
+        await ProjectManager.installDependencies(project, options.installDependencies);
+
         logger.log(`Update the changelog`);
         await new ChangelogGenerator().updateChangeLog({
             projectName: options.projectName,
