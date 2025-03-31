@@ -329,7 +329,7 @@ export class ReleaseCreator {
             const json = JSON.parse(versions);
             if (!json.includes(releaseVersion)) {
                 logger.inLog(`Publishing ${assets[0].name} to npm`);
-                //utils.executeCommand(`npm publish ${assets[0].name}`, { cwd: project.dir });
+                utils.executeCommand(`npm publish ${assets[0].name}`, { cwd: project.dir });
             } else {
                 logger.inLog(`Version ${releaseVersion} already exists in npm`);
             }
