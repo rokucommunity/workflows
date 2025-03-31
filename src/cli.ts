@@ -40,6 +40,7 @@ let options = yargs
     })
     .command('publish-release', 'Publish GitHub release, push artifacts for public use', (builder) => {
         return builder
+            .option('branch', { type: 'string', description: 'The release branch to checkout' })
             .option('projectName', { type: 'string', description: 'The name of the project to create the release for' })
             .option('ref', { type: 'string', description: 'The merge commit for the pull request' })
             .option('releaseType', { type: 'string', description: 'The store we are releasing to' })
