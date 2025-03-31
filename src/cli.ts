@@ -33,7 +33,7 @@ let options = yargs
             .option('artifactPaths', { type: 'string', description: 'The glob pattern used to get release artifact(s)' })
     }, (argv) => {
         argv = preSetup(argv);
-        new ReleaseCreator().uploadRelease(argv).catch(e => {
+        new ReleaseCreator().makeReleaseArtifacts(argv).catch(e => {
             console.error(e);
             process.exit(1);
         });

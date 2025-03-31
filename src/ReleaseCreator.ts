@@ -127,7 +127,7 @@ export class ReleaseCreator {
      * Replaces the release artifacts to the GitHub release
      * and add the changelog patch to the release notes
      */
-    public async uploadRelease(options: { branch: string; projectName: string; artifactPaths: string }) {
+    public async makeReleaseArtifacts(options: { branch: string; projectName: string; artifactPaths: string }) {
         logger.log(`Upload release... artifactPaths: ${options.artifactPaths}`);
         logger.increaseIndent();
 
