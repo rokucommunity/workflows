@@ -317,10 +317,8 @@ export class ReleaseCreator {
             });
 
             const buffer = Buffer.from(new Uint8Array(assetResponse.data as any));
-
             await fsExtra.writeFileSync(s`${project.dir}/${asset.name}`, buffer);
         }
-
 
         logger.log(`Publishing artifacts`);
         if (options.releaseType === 'npm') {
