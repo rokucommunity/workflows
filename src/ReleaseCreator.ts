@@ -329,7 +329,6 @@ export class ReleaseCreator {
             const json = JSON.parse(versions);
             if (!json.includes(releaseVersion)) {
                 logger.inLog(`Publishing ${assets[0].name} to npm`);
-                utils.executeCommand(`cat ./.npmrc`, { cwd: project.dir });
                 utils.executeCommand(`echo "//registry.npmjs.org/:_authToken=${process.env.NPM_TOKEN}" > ./.npmrc`, { cwd: project.dir });
                 utils.executeCommand(`cat ./.npmrc`, { cwd: project.dir });
                 utils.executeCommand(`npm publish ${assets[0].name}`, { cwd: project.dir });
