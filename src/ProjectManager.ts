@@ -110,10 +110,10 @@ export class ProjectManager {
         let project = ProjectManager.getProject(options.projectName);
         ProjectManager.getInstance().cloneProject(project);
 
+        let projectsToClone: Project[] = [];
         if (options.installDependencies) {
             logger.log(`Get the package.json for the project ${options.projectName}, and find the dependencies that need to be cloned`);
             let projectPackageJson = fsExtra.readJsonSync(s`${project.dir}/package.json`);
-            let projectsToClone: Project[] = [];
             if (projectPackageJson.dependencies) {
                 Object.keys(projectPackageJson.dependencies).forEach(dependency => {
                     let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
@@ -133,8 +133,8 @@ export class ProjectManager {
                 });
             }
             projectsToClone = [...new Set(projectsToClone)];
-            return projectsToClone;
         }
+        return projectsToClone;
     }
 
     private cloneProject(project: Project) {
