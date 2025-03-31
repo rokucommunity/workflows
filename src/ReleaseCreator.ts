@@ -291,9 +291,6 @@ export class ReleaseCreator {
                 release_id: draftRelease.id,
                 draft: false
             });
-
-            utils.executeCommandWithOutput(`git tag v${releaseVersion} ${options.ref} -m '${releaseVersion}'`, { cwd: project.dir });
-            utils.executeCommand(`git push origin v${releaseVersion}`, { cwd: project.dir });
         } else {
             logger.log(`Release ${releaseVersion} is already published`);
         }
