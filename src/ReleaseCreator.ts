@@ -40,7 +40,7 @@ export class ReleaseCreator {
         logger.log(`Intialize release... releaseType: ${options.releaseType}, branch: ${options.branch}`);
         logger.increaseIndent();
 
-        const project = await ProjectManager.setupForProject(options);
+        const project = await ProjectManager.initialize(options);
 
         logger.log(`Checking for a clean repository`);
         if (!utils.executeCommandSucceeds('git diff --quiet', { cwd: project.dir })) {
@@ -132,7 +132,7 @@ export class ReleaseCreator {
         //TODO this needs another look. We get the artifacts from the previous step and upload them. 
         //The only thing that uses the diretory is getting the version which reads the package.json
         //I can't assume that I'm running in the repo I care about though so this might be necessary
-        const project = await ProjectManager.setupForProject({ ...options, installDependencies: false });
+        const project = await ProjectManager.initialize({ ...options, installDependencies: false });
 
         logger.log(`Checkout the release branch ${options.branch}`);
         utils.executeCommand(`git checkout --quiet ${options.branch}`, { cwd: project.dir });
@@ -261,7 +261,7 @@ export class ReleaseCreator {
         logger.log(`publish release...branch: ${options.ref}, releaseType: ${options.releaseType}`);
         logger.increaseIndent();
 
-        const project = await ProjectManager.setupForProject({ ...options, installDependencies: false });
+        const project = await ProjectManager.initialize({ ...options, installDependencies: false });
         const releaseVersion = await this.getVersion(project.dir);
 
         logger.log(`Find the existing release ${releaseVersion}`);

@@ -19,7 +19,7 @@ export class ProjectManager {
 
     private projects: Project[] = [];
 
-    public static async setupForProject(options: { projectName: string, installDependencies: boolean }) {
+    public static async initialize(options: { projectName: string, installDependencies: boolean }) {
         const instance = ProjectManager.getInstance();
         if (instance.projects.length > 0) {
             logger.log('Projects have already been setup. Skipping');
@@ -29,9 +29,8 @@ export class ProjectManager {
         logger.log('Creating tempDir', instance.tempDir);
         fsExtra.emptyDirSync(instance.tempDir);
 
-
         logger.log(`Getting all project ${options.projectName} dependencies`);
-        let projects = await instance.getProjectDependencies(options.projectName);
+        let projectDependencies = await instance.getProjectDependencies(options.projectName);
 
         const project = ProjectManager.getProject(options.projectName);
         logger.log(`Setting up git config user name and email for project ${project.name}`);
@@ -42,8 +41,8 @@ export class ProjectManager {
         const repoUrl = project.repositoryUrl.replace('https://', `https://x-access-token:${process.env.GH_TOKEN}@`);
         utils.executeCommand(`git remote set-url origin ${repoUrl}`, { cwd: project.dir });
 
-        logger.log(`Cloning projects: ${projects.map(x => x.name).join(', ')}`);
-        for (const project of projects) {
+        logger.log(`Cloning projects: ${projectDependencies.map(x => x.name).join(', ')}`);
+        for (const project of projectDependencies) {
             instance.cloneProject(project);
         }
 
