@@ -105,7 +105,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
                 lines.push([
                     ` - upgrade to [${dependency.name}@${dependency.newVersion}]`,
                     `(${dependencyProject.repositoryUrl}/blob/master/CHANGELOG.md#`,
-                    `${dependency.newVersion.replace(/\./g, '')}---${this.getVersionDate(dependencyProject.dir, dependency.newVersion)}). `,
+                    `${dependency.newVersion.replaceAll(/\./g, '')}---${this.getVersionDate(dependencyProject.dir, dependency.newVersion)}). `,
                     `Notable changes since ${dependency.previousReleaseVersion}:`
                 ].join(''));
                 for (const commit of this.getCommitLogs(dependency.repoName, dependency.previousReleaseVersion, dependency.newVersion)) {
