@@ -28,6 +28,7 @@ let options = yargs
     })
     .command('upload-release', 'Upload release artifacts to GitHub release', (builder) => {
         return builder
+            .option('branch', { type: 'string', description: 'The release branch to checkout' })
             .option('projectName', { type: 'string', description: 'The name of the project to create the release for' })
             .option('artifactPaths', { type: 'string', description: 'The glob pattern used to get release artifact(s)' })
     }, (argv) => {

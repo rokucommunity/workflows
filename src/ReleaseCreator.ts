@@ -125,7 +125,7 @@ export class ReleaseCreator {
      * Replaces the release artifacts to the GitHub release
      * and add the changelog patch to the release notes
      */
-    public async uploadRelease(options: { projectName: string; artifactPaths: string }) {
+    public async uploadRelease(options: { branch: string; projectName: string; artifactPaths: string }) {
         logger.log(`Upload release... artifactPaths: ${options.artifactPaths}`);
         logger.increaseIndent();
 
@@ -133,6 +133,9 @@ export class ReleaseCreator {
         //The only thing that uses the diretory is getting the version which reads the package.json
         //I can't assume that I'm running in the repo I care about though so this might be necessary
         const project = await ProjectManager.setupForProject({ ...options, installDependencies: false });
+
+        logger.log(`Checkout the release branch ${options.branch}`);
+        utils.executeCommand(`git checkout --quiet ${options.branch}`, { cwd: project.dir });
 
         const releaseVersion = await this.getVersion(project.dir);
 
