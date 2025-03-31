@@ -108,7 +108,7 @@ export class ProjectManager {
         ProjectManager.getInstance().cloneProject(project);
 
         logger.log(`Get the package.json for the project ${projectName}, and find the dependencies that need to be cloned`);
-        let projectPackageJson = fsExtra.readJsonSync(s`${project.dir}/package.json`).version;
+        let projectPackageJson = fsExtra.readJsonSync(s`${project.dir}/package.json`);
         let projectsToClone: Project[] = [];
         if (projectPackageJson.dependencies) {
             Object.keys(projectPackageJson.dependencies).forEach(dependency => {
