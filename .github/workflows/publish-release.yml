@@ -3,6 +3,11 @@ name: Publish Release
 on:
    workflow_call:
     inputs:
+        branch:
+          type: string
+          description: "The branch to create the release from"
+          default: "master"
+          required: true
         ref:
             type: string
             description: "The merge commit created when the pull request is merged"
