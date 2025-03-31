@@ -26,7 +26,7 @@ let options = yargs
             process.exit(1);
         });
     })
-    .command('upload-release', 'Upload release artifacts to GitHub release', (builder) => {
+    .command('make-release-artifacts', 'Upload release artifacts to GitHub release', (builder) => {
         return builder
             .option('branch', { type: 'string', description: 'The release branch to checkout' })
             .option('projectName', { type: 'string', description: 'The name of the project to create the release for' })
