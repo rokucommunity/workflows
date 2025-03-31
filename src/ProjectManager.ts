@@ -30,7 +30,7 @@ export class ProjectManager {
         fsExtra.emptyDirSync(instance.tempDir);
 
         logger.log(`Getting all project ${options.projectName} dependencies`);
-        let projectDependencies = await instance.getProjectDependencies(options.projectName);
+        let projectDependencies = await instance.getProjectDependencies(options);
 
         const project = ProjectManager.getProject(options.projectName);
         logger.log(`Setting up git config user name and email for project ${project.name}`);
@@ -75,7 +75,7 @@ export class ProjectManager {
 
     private constructor() { }
 
-    private async getProjectDependencies(projectName: string) {
+    private async getProjectDependencies(options: { projectName: string; installDependencies: boolean }) {
         const octokit = new Octokit({
             auth: process.env.GH_TOKEN,
             request: { fetch }
@@ -106,33 +106,35 @@ export class ProjectManager {
         });
         await Promise.allSettled(promises);
 
-        logger.log(`Get the project ${projectName} and clone it`);
-        let project = ProjectManager.getProject(projectName);
+        logger.log(`Get the project ${options.projectName} and clone it`);
+        let project = ProjectManager.getProject(options.projectName);
         ProjectManager.getInstance().cloneProject(project);
 
-        logger.log(`Get the package.json for the project ${projectName}, and find the dependencies that need to be cloned`);
-        let projectPackageJson = fsExtra.readJsonSync(s`${project.dir}/package.json`);
-        let projectsToClone: Project[] = [];
-        if (projectPackageJson.dependencies) {
-            Object.keys(projectPackageJson.dependencies).forEach(dependency => {
-                let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
-                if (foundDependency) {
-                    projectsToClone.push(ProjectManager.getProject(foundDependency.repoName));
-                    project.dependencies.push({ name: dependency, repoName: foundDependency.repoName, previousReleaseVersion: '', newVersion: '' });
-                }
-            });
+        if (options.installDependencies) {
+            logger.log(`Get the package.json for the project ${options.projectName}, and find the dependencies that need to be cloned`);
+            let projectPackageJson = fsExtra.readJsonSync(s`${project.dir}/package.json`);
+            let projectsToClone: Project[] = [];
+            if (projectPackageJson.dependencies) {
+                Object.keys(projectPackageJson.dependencies).forEach(dependency => {
+                    let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
+                    if (foundDependency) {
+                        projectsToClone.push(ProjectManager.getProject(foundDependency.repoName));
+                        project.dependencies.push({ name: dependency, repoName: foundDependency.repoName, previousReleaseVersion: '', newVersion: '' });
+                    }
+                });
+            }
+            if (projectPackageJson.devDependencies) {
+                Object.keys(projectPackageJson.devDependencies).forEach(dependency => {
+                    let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
+                    if (foundDependency) {
+                        projectsToClone.push(ProjectManager.getProject(foundDependency.repoName));
+                        project.devDependencies.push({ name: dependency, repoName: foundDependency.repoName, previousReleaseVersion: '', newVersion: '' });
+                    }
+                });
+            }
+            projectsToClone = [...new Set(projectsToClone)];
+            return projectsToClone;
         }
-        if (projectPackageJson.devDependencies) {
-            Object.keys(projectPackageJson.devDependencies).forEach(dependency => {
-                let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
-                if (foundDependency) {
-                    projectsToClone.push(ProjectManager.getProject(foundDependency.repoName));
-                    project.devDependencies.push({ name: dependency, repoName: foundDependency.repoName, previousReleaseVersion: '', newVersion: '' });
-                }
-            });
-        }
-        projectsToClone = [...new Set(projectsToClone)];
-        return projectsToClone;
     }
 
     private cloneProject(project: Project) {

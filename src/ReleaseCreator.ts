@@ -259,14 +259,14 @@ export class ReleaseCreator {
      * Marks the GitHub release as published 
      * and releases the artifacts to the correct store
      */
-    public async publishRelease(options: { projectName: string, branch: string, ref: string, releaseType: string }) {
+    public async publishRelease(options: { projectName: string, ref: string, releaseType: string }) {
         logger.log(`publish release...branch: ${options.ref}, releaseType: ${options.releaseType}`);
         logger.increaseIndent();
 
         const project = await ProjectManager.initialize({ ...options, installDependencies: false });
 
-        logger.log(`Checkout the release branch ${options.branch}`);
-        utils.executeCommand(`git checkout --quiet ${options.branch}`, { cwd: project.dir });
+        logger.log(`Checkout the release ${options.ref}`);
+        utils.executeCommand(`git checkout --quiet ${options.ref}`, { cwd: project.dir });
 
         const releaseVersion = await this.getVersion(project.dir);
 

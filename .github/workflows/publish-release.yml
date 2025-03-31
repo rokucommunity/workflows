@@ -3,10 +3,6 @@ name: Publish Release
 on:
    workflow_call:
     inputs:
-        branch:
-            type: string
-            description: "The branch to create the release from"
-            required: true
         ref:
             type: string
             description: "The merge commit created when the pull request is merged"
@@ -49,7 +45,6 @@ jobs:
         run: |
           npx ts-node src/cli.ts \
             publish-release \
-            --branch "${{ inputs.branch }}" \
             --projectName "${{ github.repository }}" \
             --ref ${{ inputs.ref }} \
             --releaseType ${{ inputs.release-type }}
