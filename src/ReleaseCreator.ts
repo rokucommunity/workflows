@@ -148,7 +148,7 @@ export class ReleaseCreator {
         const releaseVersion = await this.getVersion(project.dir);
 
         logger.log(`Find the existing release ${releaseVersion}`);
-        const releases = await this.listGitHubReleases(options.projectName);
+        let releases = await this.listGitHubReleases(options.projectName);
         let draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
         if (!draftRelease) {
             throw new Error(`Release ${releaseVersion} does not exist`);
@@ -257,6 +257,41 @@ export class ReleaseCreator {
             tag_name: draftRelease.tag_name,
             body: patchNotes
         });
+
+        releases = await this.listGitHubReleases(options.projectName);
+        draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
+        const draftCommentString = `Link to draft`;
+        logger.log(`Get comments for pull request ${pullRequest.data[0].id} and find the bot draft comment`);
+        let comments = await utils.octokitPageHelper((page: number) => {
+            let comments = this.octokit.rest.issues.listComments({
+                owner: this.ORG,
+                repo: options.projectName,
+                issue_number: pullRequest.data[0].number,
+                per_page: utils.OCTOKIT_PER_PAGE,
+                page: page
+            });
+            return comments;
+        });
+
+        let draftComment = comments.find(c => c.body.startsWith(draftCommentString));
+        const editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${releaseVersion}/CHANGELOG.md?pr=/${this.ORG}/${options.projectName}/pull/${pullRequest.data[0].number}`;
+        if (!draftComment) {
+            logger.log(`Create new bot draft comment`);
+            await this.octokit.rest.issues.createComment({
+                owner: this.ORG,
+                repo: options.projectName,
+                issue_number: pullRequest.data[0].number,
+                body: `${draftCommentString} [release](${draftRelease.html_url}). [Edit changelog](${editChangeLogLink})`
+            });
+        } else {
+            logger.log(`Edit bot draft comment`);
+            await this.octokit.rest.issues.updateComment({
+                owner: this.ORG,
+                repo: options.projectName,
+                comment_id: draftComment.id,
+                body: `${draftCommentString} [release](${draftRelease.html_url}). [Edit changelog](${editChangeLogLink})`
+            });
+        }
 
         logger.decreaseIndent();
     }
