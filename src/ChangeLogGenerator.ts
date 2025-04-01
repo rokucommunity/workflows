@@ -53,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         if (changelog === '') {
             logger.log('No content in changelog.md file. Adding header');
             fsExtra.outputFileSync(changelogPath, ChangelogGenerator.HEADER);
+            changelog = fsExtra.readFileSync(changelogPath).toString().trim();
         }
 
         const [eolChar] = /\r?\n/.exec(changelog) ?? ['\r\n'];
