@@ -197,18 +197,13 @@ export class ReleaseCreator {
         }
 
         logger.log(`Get the pull request for release ${releaseVersion}`);
-        const pullRequest = await this.octokit.rest.pulls.list({
-            owner: this.ORG,
-            repo: options.projectName,
-            state: 'open',
-            head: `release/${releaseVersion}`
-        });
+        const pullRequest = await this.getPullRequest(options.projectName, releaseVersion);
 
         logger.log(`Get the changelog file patch from the pull request`);
         const { data: files } = await this.octokit.rest.pulls.listFiles({
             owner: this.ORG,
             repo: options.projectName,
-            pull_number: pullRequest.data[0].number
+            pull_number: pullRequest.number
         });
 
         let lines = [];
@@ -251,11 +246,11 @@ export class ReleaseCreator {
         releases = await this.listGitHubReleases(options.projectName);
         draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
         logger.log(`Update the pull request with the release link and edit changelog link`);
-        const editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${releaseVersion}/CHANGELOG.md?pr=/${this.ORG}/${options.projectName}/pull/${pullRequest.data[0].number}`;
+        const editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${releaseVersion}/CHANGELOG.md?pr=/${this.ORG}/${options.projectName}/pull/${pullRequest.number}`;
         await this.octokit.rest.pulls.update({
             owner: this.ORG,
             repo: options.projectName,
-            pull_number: pullRequest.data[0].number,
+            pull_number: pullRequest.number,
             body: `Link to draft [release](${draftRelease.html_url}). [Edit changelog](${editChangeLogLink})`
         });
 
@@ -366,24 +361,17 @@ export class ReleaseCreator {
         }
 
         logger.log(`Get the pull request for release ${releaseVersion}`);
-        const pullRequest = await this.octokit.rest.pulls.list({
-            owner: this.ORG,
-            repo: options.projectName,
-            state: 'open',
-            head: `release/${releaseVersion}`
-        });
+        const pullRequest = await this.getPullRequest(options.projectName, releaseVersion, 'closed');
 
-        function buildPullRequestDescription() {
-            const changelogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/${options.ref}/CHANGELOG.md`;
-            const releaseLink = `https://github.com/rokucommunity/${options.projectName}/releases/tag/v${releaseVersion}`;
-            return `Link to [release](${releaseLink}). [Changelog](${changelogLink})`;
-        }
+        const changelogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/${options.ref}/CHANGELOG.md`;
+        const releaseLink = `https://github.com/rokucommunity/${options.projectName}/releases/tag/v${releaseVersion}`;
+        const body = `Link to [release](${releaseLink}). [Changelog](${changelogLink})`;
 
         await this.octokit.rest.pulls.update({
             owner: this.ORG,
             repo: options.projectName,
-            pull_number: pullRequest.data[0].number,
-            body: buildPullRequestDescription()
+            pull_number: pullRequest.number,
+            body: body
         });
         logger.decreaseIndent();
     }
@@ -409,25 +397,19 @@ export class ReleaseCreator {
         }
 
         logger.log(`Close pull request for release ${options.releaseVersion}`);
-        const pullRequest = await this.octokit.rest.pulls.list({
-            owner: this.ORG,
-            repo: options.projectName,
-            state: 'open',
-            head: `release/${options.releaseVersion}`
-        });
-        if (pullRequest.data.length > 0) {
-            for (const pr of pullRequest.data) {
-                try {
-                    await this.octokit.rest.pulls.update({
-                        owner: this.ORG,
-                        repo: options.projectName,
-                        pull_number: pr.number,
-                        state: 'closed'
-                    });
-                    logger.log(`Closed pull request ${pr.number}`);
-                } catch (error) {
-                    logger.log(`Failed to close pull request ${pr.number}`);
-                }
+        const pullRequest = await this.getPullRequest(options.projectName, options.releaseVersion);
+
+        if (pullRequest) {
+            try {
+                await this.octokit.rest.pulls.update({
+                    owner: this.ORG,
+                    repo: options.projectName,
+                    pull_number: pullRequest.number,
+                    state: 'closed'
+                });
+                logger.log(`Closed pull request ${pullRequest.number}`);
+            } catch (error) {
+                logger.log(`Failed to close pull request ${pullRequest.number}`);
             }
         }
 
@@ -501,6 +483,16 @@ export class ReleaseCreator {
             });
         });
         return releases;
+    }
+
+    private async getPullRequest(repoName: string, releaseVersion: string, state: 'open' | 'closed' = 'open') {
+        const pullRequests = await this.octokit.rest.pulls.list({
+            owner: this.ORG,
+            repo: repoName,
+            state: state,
+            head: `release/${releaseVersion}`
+        });
+        return pullRequests.data.filter(pr => pr.head.ref === `release/${releaseVersion}`)[0];
     }
 
     private getRepositoryName() {
