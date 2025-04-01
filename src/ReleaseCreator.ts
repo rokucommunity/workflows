@@ -255,7 +255,7 @@ export class ReleaseCreator {
         await this.octokit.rest.pulls.update({
             owner: this.ORG,
             repo: options.projectName,
-            pull_number: pullRequest[0].number,
+            pull_number: pullRequest.data[0].number,
             body: `Link to draft [release](${draftRelease.html_url}). [Edit changelog](${editChangeLogLink})`
         });
 
@@ -382,7 +382,7 @@ export class ReleaseCreator {
         await this.octokit.rest.pulls.update({
             owner: this.ORG,
             repo: options.projectName,
-            pull_number: pullRequest[0].number,
+            pull_number: pullRequest.data[0].number,
             body: buildPullRequestDescription()
         });
         logger.decreaseIndent();
