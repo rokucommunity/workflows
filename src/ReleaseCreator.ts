@@ -105,15 +105,6 @@ export class ReleaseCreator {
             draft: true
         });
 
-        function buildPullRequestDescription() {
-            const linkDate = new Date().toISOString().split('T')[0];
-            const versionStrip = releaseVersion.replaceAll('.', '');
-            //TODO This release branch is deleted on merge so the link to the changelog isn't permanent
-            const changelogLink = `https://github.com/rokucommunity/${options.projectName}/blob/release/${releaseVersion}/CHANGELOG.md#${versionStrip}---${linkDate}`;
-            const releaseLink = `https://github.com/rokucommunity/${options.projectName}/releases/tag/v${releaseVersion}`;
-            return `Release [${releaseVersion}](${releaseLink}) which includes [these changes](${changelogLink}).`
-        }
-
         //Creating the pull request will trigger another workflow, so it should be the last step of this flow
         logger.log(`Create pull request in ${options.projectName}: release/${releaseVersion} -> ${options.branch}`);
         const createResponse = await this.octokit.rest.pulls.create({
@@ -121,7 +112,6 @@ export class ReleaseCreator {
             repo: options.projectName,
             title: releaseVersion,
             head: `release/${releaseVersion}`,
-            body: buildPullRequestDescription(),
             base: options.branch,
             draft: false
         });
@@ -260,38 +250,14 @@ export class ReleaseCreator {
 
         releases = await this.listGitHubReleases(options.projectName);
         draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
-        const draftCommentString = `Link to draft`;
-        logger.log(`Get comments for pull request ${pullRequest.data[0].id} and find the bot draft comment`);
-        let comments = await utils.octokitPageHelper((page: number) => {
-            let comments = this.octokit.rest.issues.listComments({
-                owner: this.ORG,
-                repo: options.projectName,
-                issue_number: pullRequest.data[0].number,
-                per_page: utils.OCTOKIT_PER_PAGE,
-                page: page
-            });
-            return comments;
-        });
-
-        let draftComment = comments.find(c => c.body.startsWith(draftCommentString));
+        logger.log(`Update the pull request with the release link and edit changelog link`);
         const editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${releaseVersion}/CHANGELOG.md?pr=/${this.ORG}/${options.projectName}/pull/${pullRequest.data[0].number}`;
-        if (!draftComment) {
-            logger.log(`Create new bot draft comment`);
-            await this.octokit.rest.issues.createComment({
-                owner: this.ORG,
-                repo: options.projectName,
-                issue_number: pullRequest.data[0].number,
-                body: `${draftCommentString} [release](${draftRelease.html_url}). [Edit changelog](${editChangeLogLink})`
-            });
-        } else {
-            logger.log(`Edit bot draft comment`);
-            await this.octokit.rest.issues.updateComment({
-                owner: this.ORG,
-                repo: options.projectName,
-                comment_id: draftComment.id,
-                body: `${draftCommentString} [release](${draftRelease.html_url}). [Edit changelog](${editChangeLogLink})`
-            });
-        }
+        await this.octokit.rest.pulls.update({
+            owner: this.ORG,
+            repo: options.projectName,
+            pull_number: pullRequest[0].number,
+            body: `Link to draft [release](${draftRelease.html_url}). [Edit changelog](${editChangeLogLink})`
+        });
 
         logger.decreaseIndent();
     }
@@ -399,6 +365,26 @@ export class ReleaseCreator {
 
         }
 
+        logger.log(`Get the pull request for release ${releaseVersion}`);
+        const pullRequest = await this.octokit.rest.pulls.list({
+            owner: this.ORG,
+            repo: options.projectName,
+            state: 'open',
+            head: `release/${releaseVersion}`
+        });
+
+        function buildPullRequestDescription() {
+            const changelogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/${options.ref}/CHANGELOG.md`;
+            const releaseLink = `https://github.com/rokucommunity/${options.projectName}/releases/tag/v${releaseVersion}`;
+            return `Link to [release](${releaseLink}). [Changelog](${changelogLink})`;
+        }
+
+        await this.octokit.rest.pulls.update({
+            owner: this.ORG,
+            repo: options.projectName,
+            pull_number: pullRequest[0].number,
+            body: buildPullRequestDescription()
+        });
         logger.decreaseIndent();
     }
 
