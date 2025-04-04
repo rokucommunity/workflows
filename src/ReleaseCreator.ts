@@ -113,6 +113,7 @@ export class ReleaseCreator {
             title: releaseVersion,
             head: `release/${releaseVersion}`,
             base: options.branch,
+            body: this.makePullRequestBody({ ...options, releaseVersion: releaseVersion, isDraft: true }),
             draft: false
         });
 
@@ -246,12 +247,11 @@ export class ReleaseCreator {
         releases = await this.listGitHubReleases(options.projectName);
         draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
         logger.log(`Update the pull request with the release link and edit changelog link`);
-        const editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${releaseVersion}/CHANGELOG.md?pr=/${this.ORG}/${options.projectName}/pull/${pullRequest.number}`;
         await this.octokit.rest.pulls.update({
             owner: this.ORG,
             repo: options.projectName,
             pull_number: pullRequest.number,
-            body: `Link to draft [release](${draftRelease.html_url}). [Edit changelog](${editChangeLogLink})`
+            body: this.makePullRequestBody({ ...options, githubReleaseLink: draftRelease.html_url, releaseVersion: releaseVersion, isDraft: true }),
         });
 
         logger.decreaseIndent();
@@ -363,15 +363,13 @@ export class ReleaseCreator {
         logger.log(`Get the pull request for release ${releaseVersion}`);
         const pullRequest = await this.getPullRequest(options.projectName, releaseVersion, 'closed');
 
-        const changelogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/${options.ref}/CHANGELOG.md`;
         const releaseLink = `https://github.com/rokucommunity/${options.projectName}/releases/tag/v${releaseVersion}`;
-        const body = `Link to [release](${releaseLink}). [Changelog](${changelogLink})`;
 
         await this.octokit.rest.pulls.update({
             owner: this.ORG,
             repo: options.projectName,
             pull_number: pullRequest.number,
-            body: body
+            body: this.makePullRequestBody({ ...options, githubReleaseLink: releaseLink, releaseVersion: releaseVersion, isDraft: false }),
         });
         logger.decreaseIndent();
     }
@@ -503,4 +501,13 @@ export class ReleaseCreator {
         return repoName;
     }
 
+    private makePullRequestBody(options: { githubReleaseLink?: string, projectName: string, ref?: string, releaseVersion?: string, isDraft: boolean }) {
+        if (options.isDraft) {
+            const editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${options.releaseVersion}/CHANGELOG.md`;
+            return `${options.githubReleaseLink ? `Link to draft' [release](${options.githubReleaseLink}). ` : ''}[Edit changelog](${editChangeLogLink})`
+        } else {
+            const changeLogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/${options.ref}/CHANGELOG.md`;
+            return `Link to [release](${options.githubReleaseLink}). [Changelog](${changeLogLink})`
+        }
+    }
 }
