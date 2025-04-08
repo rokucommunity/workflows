@@ -248,10 +248,10 @@ export class ReleaseCreator {
         releases = await this.listGitHubReleases(options.projectName);
         draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
         let body = this.makePullRequestBody({ ...options, githubReleaseLink: draftRelease.html_url, releaseVersion: releaseVersion, isDraft: true });
-        const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, '.tgz'));
+        const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         logger.log(`Artifact name: ${artifactName}`);
         const tag = draftRelease.html_url.split('/').pop();
-        const linkToDownload = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName}`;
+        const linkToDownload = `[here](https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName})`;
         const sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
         const npmInstallCommand = `\`\`\`bash\nnpm install ${linkToDownload}\n\`\`\``;
         body = `${body}\n\nA new temporary npm package based on ${sha}. You can download it ${linkToDownload} or install it by running the following command:\n${npmInstallCommand}`;
@@ -331,15 +331,17 @@ export class ReleaseCreator {
             await fsExtra.writeFileSync(s`${project.dir}/${asset.name}`, buffer);
         }
 
-        logger.log(`Publishing artifacts`);
+        const artifactName = this.getArtifactName(assets.map(a => a.name), this.getAssetName(project.dir, path.extname(assets[0].name)));
+
+        logger.log(`Publishing artifact ${artifactName} to ${options.releaseType}`);
         if (options.releaseType === 'npm') {
             const packageName = this.getPackageName(project.dir);
             const versions = utils.executeCommandWithOutput(`npm view ${packageName} versions --json`).toString();
             const json = JSON.parse(versions);
             if (!json.includes(releaseVersion)) {
-                logger.inLog(`Publishing ${assets[0].name} to npm`);
+                logger.inLog(`Publishing ${artifactName} to npm`);
                 utils.executeCommand(`echo "//registry.npmjs.org/:_authToken=${process.env.NPM_TOKEN}" > ./.npmrc`, { cwd: project.dir });
-                utils.executeCommand(`npm publish ${assets[0].name}`, { cwd: project.dir });
+                utils.executeCommand(`npm publish ${artifactName}`, { cwd: project.dir });
             } else {
                 logger.inLog(`Version ${releaseVersion} already exists in npm`);
             }
@@ -349,8 +351,8 @@ export class ReleaseCreator {
                 const versions = utils.executeCommandWithOutput(`npx @vscode/vsce show ${vsceName} --json`).toString();
                 const json = JSON.parse(versions);
                 if (!(json.versions.find((version: any) => version.version === releaseVersion))) {
-                    logger.inLog(`Publishing ${assets[0].name} to vscode`);
-                    // utils.executeCommand(`npx vsce publish --packagePath ${assets[0].name} -p ${process.env.VSCE_TOKEN}`, { cwd: project.dir });
+                    logger.inLog(`Publishing ${artifactName} to vscode`);
+                    // utils.executeCommand(`npx vsce publish --packagePath ${artifactName} -p ${process.env.VSCE_TOKEN}`, { cwd: project.dir });
                 } else {
                     logger.inLog(`Version ${releaseVersion} already exists in vscode`);
                 }
@@ -360,8 +362,8 @@ export class ReleaseCreator {
                 const json = JSON.parse(response);
                 const versions = json?.extensions[0]?.allVersions ?? {};
                 if (!(releaseVersion in versions)) {
-                    logger.inLog(`Publishing ${assets[0].name} to open - vsx`);
-                    // utils.executeCommand(`npx ovsx publish --packagePath ${assets[0].name} -p ${process.env.VSCE_TOKEN} --debug`, { cwd: project.dir });
+                    logger.inLog(`Publishing ${artifactName} to open - vsx`);
+                    // utils.executeCommand(`npx ovsx publish --packagePath ${artifactName} -p ${process.env.VSCE_TOKEN} --debug`, { cwd: project.dir });
                 } else {
                     logger.inLog(`Version ${releaseVersion} already exists in open-vsx`);
                 }
@@ -474,8 +476,8 @@ export class ReleaseCreator {
 
     private getVscePackageName(dir: string) {
         const packageJson = fsExtra.readJsonSync(path.join(dir, 'package.json'));
-        //TODO make sure publisher exists
-        return `${packageJson.publisher}.${packageJson.name}`
+        const publisher = packageJson.publisher ? `${packageJson.publisher}.` : '';
+        return `${publisher}${packageJson.name}`
     }
 
 
@@ -511,6 +513,7 @@ export class ReleaseCreator {
     }
 
     private getAssetName(dir: string, extension: string) {
+        extension = path.extname(extension);
         const packageJson = fsExtra.readJsonSync(path.join(dir, 'package.json'));
         const name = packageJson.name.replace(/@/g, '').replace(/\//g, '-');
         const version = packageJson.version;
@@ -520,7 +523,7 @@ export class ReleaseCreator {
     private makePullRequestBody(options: { githubReleaseLink?: string, projectName: string, ref?: string, releaseVersion?: string, isDraft: boolean }) {
         if (options.isDraft) {
             const editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${options.releaseVersion}/CHANGELOG.md`;
-            return `${options.githubReleaseLink ? `Link to draft' [release](${options.githubReleaseLink}). ` : ''}[Edit changelog](${editChangeLogLink})`
+            return `${options.githubReleaseLink ? `Link to draft [release](${options.githubReleaseLink}). ` : ''}[Edit changelog](${editChangeLogLink})`
         } else {
             const changeLogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/${options.ref}/CHANGELOG.md`;
             return `Link to [release](${options.githubReleaseLink}). [Changelog](${changeLogLink})`
@@ -528,7 +531,7 @@ export class ReleaseCreator {
     }
 
     private getArtifactName(artifacts: string[], assetNameHint: string) {
-        function getPath() {
+        function findArtifact() {
             if (artifacts.length === 1) {
                 return artifacts[0];
             }
@@ -538,8 +541,8 @@ export class ReleaseCreator {
                 return filteredArtifacts[0];
             }
             //then find the artifact that matches the name hint the most
-            const artifactName = path.basename(assetNameHint);
-            const matchingArtifacts = filteredArtifacts.filter(a => a.includes(artifactName));
+            //TODO update this to be fuzzy matching
+            const matchingArtifacts = filteredArtifacts.filter(a => a.includes(path.basename(assetNameHint)));
             if (matchingArtifacts.length === 1) {
                 return matchingArtifacts[0];
             }
@@ -548,6 +551,6 @@ export class ReleaseCreator {
                 return matchingArtifacts[0];
             }
         }
-        return getPath().split('/').pop() ?? assetNameHint; //if nothing is found, return the name hint
+        return findArtifact() ?? assetNameHint; //if nothing is found, return the name hint
     }
 }
