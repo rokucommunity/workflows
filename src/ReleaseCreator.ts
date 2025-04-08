@@ -249,6 +249,7 @@ export class ReleaseCreator {
         draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
         let body = this.makePullRequestBody({ ...options, githubReleaseLink: draftRelease.html_url, releaseVersion: releaseVersion, isDraft: true });
         const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, '.tgz'));
+        logger.log(`Artifact name: ${artifactName}`);
         const tag = draftRelease.html_url.split('/').pop();
         const linkToDownload = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName}`;
         const sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
