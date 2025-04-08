@@ -251,10 +251,10 @@ export class ReleaseCreator {
         const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         logger.log(`Artifact name: ${artifactName}`);
         const tag = draftRelease.html_url.split('/').pop();
-        const linkToDownload = `[here](https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName})`;
+        const linkToDownload = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName}`;
         const sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
         const npmInstallCommand = `\`\`\`bash\nnpm install ${linkToDownload}\n\`\`\``;
-        body = `${body}\n\nA new temporary npm package based on ${sha}. You can download it ${linkToDownload} or install it by running the following command:\n${npmInstallCommand}`;
+        body = `${body}\n\nA new temporary npm package based on ${sha}. You can download it [here](${linkToDownload}) or install it by running the following command:\n${npmInstallCommand}`;
         logger.log(`Update the pull request with the release link and edit changelog link`);
         await this.octokit.rest.pulls.update({
             owner: this.ORG,
