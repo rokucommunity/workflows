@@ -246,6 +246,12 @@ export class ReleaseCreator {
 
         releases = await this.listGitHubReleases(options.projectName);
         draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
+        let body = this.makePullRequestBody({ ...options, githubReleaseLink: draftRelease.html_url, releaseVersion: releaseVersion, isDraft: true });
+        const tag = draftRelease.html_url.split('/').pop();
+        const linkToDownload = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${this.getAssetName(project.dir, '.tgz')}`;
+        const sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
+        const npmInstallCommand = `\`\`\`bash\nnpm install ${linkToDownload}\n\`\`\``;
+        body = `${body}\n\nA new temporary npm package based on ${sha}. You can download it ${linkToDownload} or install it by running the following command:\n${npmInstallCommand}`;
         logger.log(`Update the pull request with the release link and edit changelog link`);
         await this.octokit.rest.pulls.update({
             owner: this.ORG,
