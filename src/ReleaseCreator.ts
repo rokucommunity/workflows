@@ -113,6 +113,7 @@ export class ReleaseCreator {
             title: releaseVersion,
             head: `release/${releaseVersion}`,
             base: options.branch,
+            body: this.makePullRequestBody({ ...options, releaseVersion: releaseVersion, isDraft: true }),
             draft: false
         });
 
@@ -124,6 +125,7 @@ export class ReleaseCreator {
      * and add the changelog patch to the release notes
      */
     public async makeReleaseArtifacts(options: { branch: string; projectName: string; artifactPaths: string }) {
+        logger.log(`TEST THAT THIS IS CALLED`);
         logger.log(`Upload release... artifactPaths: ${options.artifactPaths}`);
         logger.increaseIndent();
 
@@ -245,13 +247,20 @@ export class ReleaseCreator {
 
         releases = await this.listGitHubReleases(options.projectName);
         draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
+        let body = this.makePullRequestBody({ ...options, githubReleaseLink: draftRelease.html_url, releaseVersion: releaseVersion, isDraft: true });
+        const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
+        logger.log(`Artifact name: ${artifactName}`);
+        const tag = draftRelease.html_url.split('/').pop();
+        const linkToDownload = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName}`;
+        const sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
+        const npmInstallCommand = `\`\`\`bash\nnpm install ${linkToDownload}\n\`\`\``;
+        body = `${body}\n\nA new temporary npm package based on ${sha}. You can download it [here](${linkToDownload}) or install it by running the following command:\n${npmInstallCommand}`;
         logger.log(`Update the pull request with the release link and edit changelog link`);
-        const editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${releaseVersion}/CHANGELOG.md?pr=/${this.ORG}/${options.projectName}/pull/${pullRequest.number}`;
         await this.octokit.rest.pulls.update({
             owner: this.ORG,
             repo: options.projectName,
             pull_number: pullRequest.number,
-            body: `Link to draft [release](${draftRelease.html_url}). [Edit changelog](${editChangeLogLink})`
+            body: body
         });
 
         logger.decreaseIndent();
@@ -322,15 +331,17 @@ export class ReleaseCreator {
             await fsExtra.writeFileSync(s`${project.dir}/${asset.name}`, buffer);
         }
 
-        logger.log(`Publishing artifacts`);
+        const artifactName = this.getArtifactName(assets.map(a => a.name), this.getAssetName(project.dir, path.extname(assets[0].name)));
+
+        logger.log(`Publishing artifact ${artifactName} to ${options.releaseType}`);
         if (options.releaseType === 'npm') {
             const packageName = this.getPackageName(project.dir);
             const versions = utils.executeCommandWithOutput(`npm view ${packageName} versions --json`).toString();
             const json = JSON.parse(versions);
             if (!json.includes(releaseVersion)) {
-                logger.inLog(`Publishing ${assets[0].name} to npm`);
+                logger.inLog(`Publishing ${artifactName} to npm`);
                 utils.executeCommand(`echo "//registry.npmjs.org/:_authToken=${process.env.NPM_TOKEN}" > ./.npmrc`, { cwd: project.dir });
-                utils.executeCommand(`npm publish ${assets[0].name}`, { cwd: project.dir });
+                utils.executeCommand(`npm publish ${artifactName}`, { cwd: project.dir });
             } else {
                 logger.inLog(`Version ${releaseVersion} already exists in npm`);
             }
@@ -340,8 +351,8 @@ export class ReleaseCreator {
                 const versions = utils.executeCommandWithOutput(`npx @vscode/vsce show ${vsceName} --json`).toString();
                 const json = JSON.parse(versions);
                 if (!(json.versions.find((version: any) => version.version === releaseVersion))) {
-                    logger.inLog(`Publishing ${assets[0].name} to vscode`);
-                    // utils.executeCommand(`npx vsce publish --packagePath ${assets[0].name} -p ${process.env.VSCE_TOKEN}`, { cwd: project.dir });
+                    logger.inLog(`Publishing ${artifactName} to vscode`);
+                    // utils.executeCommand(`npx vsce publish --packagePath ${artifactName} -p ${process.env.VSCE_TOKEN}`, { cwd: project.dir });
                 } else {
                     logger.inLog(`Version ${releaseVersion} already exists in vscode`);
                 }
@@ -351,8 +362,8 @@ export class ReleaseCreator {
                 const json = JSON.parse(response);
                 const versions = json?.extensions[0]?.allVersions ?? {};
                 if (!(releaseVersion in versions)) {
-                    logger.inLog(`Publishing ${assets[0].name} to open - vsx`);
-                    // utils.executeCommand(`npx ovsx publish --packagePath ${assets[0].name} -p ${process.env.VSCE_TOKEN} --debug`, { cwd: project.dir });
+                    logger.inLog(`Publishing ${artifactName} to open - vsx`);
+                    // utils.executeCommand(`npx ovsx publish --packagePath ${artifactName} -p ${process.env.VSCE_TOKEN} --debug`, { cwd: project.dir });
                 } else {
                     logger.inLog(`Version ${releaseVersion} already exists in open-vsx`);
                 }
@@ -363,15 +374,13 @@ export class ReleaseCreator {
         logger.log(`Get the pull request for release ${releaseVersion}`);
         const pullRequest = await this.getPullRequest(options.projectName, releaseVersion, 'closed');
 
-        const changelogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/${options.ref}/CHANGELOG.md`;
         const releaseLink = `https://github.com/rokucommunity/${options.projectName}/releases/tag/v${releaseVersion}`;
-        const body = `Link to [release](${releaseLink}). [Changelog](${changelogLink})`;
 
         await this.octokit.rest.pulls.update({
             owner: this.ORG,
             repo: options.projectName,
             pull_number: pullRequest.number,
-            body: body
+            body: this.makePullRequestBody({ ...options, githubReleaseLink: releaseLink, releaseVersion: releaseVersion, isDraft: false }),
         });
         logger.decreaseIndent();
     }
@@ -467,8 +476,8 @@ export class ReleaseCreator {
 
     private getVscePackageName(dir: string) {
         const packageJson = fsExtra.readJsonSync(path.join(dir, 'package.json'));
-        //TODO make sure publisher exists
-        return `${packageJson.publisher}.${packageJson.name}`
+        const publisher = packageJson.publisher ? `${packageJson.publisher}.` : '';
+        return `${publisher}${packageJson.name}`
     }
 
 
@@ -503,4 +512,45 @@ export class ReleaseCreator {
         return repoName;
     }
 
+    private getAssetName(dir: string, extension: string) {
+        extension = path.extname(extension);
+        const packageJson = fsExtra.readJsonSync(path.join(dir, 'package.json'));
+        const name = packageJson.name.replace(/@/g, '').replace(/\//g, '-');
+        const version = packageJson.version;
+        return `${name}-${version}${extension}`;
+    }
+
+    private makePullRequestBody(options: { githubReleaseLink?: string, projectName: string, ref?: string, releaseVersion?: string, isDraft: boolean }) {
+        if (options.isDraft) {
+            const editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${options.releaseVersion}/CHANGELOG.md`;
+            return `${options.githubReleaseLink ? `Link to draft [release](${options.githubReleaseLink}). ` : ''}[Edit changelog](${editChangeLogLink})`
+        } else {
+            const changeLogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/${options.ref}/CHANGELOG.md`;
+            return `Link to [release](${options.githubReleaseLink}). [Changelog](${changeLogLink})`
+        }
+    }
+
+    private getArtifactName(artifacts: string[], assetNameHint: string) {
+        function findArtifact() {
+            if (artifacts.length === 1) {
+                return artifacts[0];
+            }
+            //first filter out any artifacts that don't have the same extension
+            const filteredArtifacts = artifacts.filter(a => a.endsWith(path.extname(assetNameHint)));
+            if (filteredArtifacts.length === 1) {
+                return filteredArtifacts[0];
+            }
+            //then find the artifact that matches the name hint the most
+            //TODO update this to be fuzzy matching
+            const matchingArtifacts = filteredArtifacts.filter(a => a.includes(path.basename(assetNameHint)));
+            if (matchingArtifacts.length === 1) {
+                return matchingArtifacts[0];
+            }
+            //if there are multiple, just return the first one
+            if (matchingArtifacts.length > 0) {
+                return matchingArtifacts[0];
+            }
+        }
+        return findArtifact() ?? assetNameHint; //if nothing is found, return the name hint
+    }
 }
