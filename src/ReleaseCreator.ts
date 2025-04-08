@@ -508,6 +508,13 @@ export class ReleaseCreator {
         return repoName;
     }
 
+    private getAssetName(dir: string, extension: string) {
+        const packageJson = fsExtra.readJsonSync(path.join(dir, 'package.json'));
+        const name = packageJson.name.replace(/@/g, '').replace(/\//g, '-');
+        const version = packageJson.version;
+        return `${name}-${version}${extension}`;
+    }
+
     private makePullRequestBody(options: { githubReleaseLink?: string, projectName: string, ref?: string, releaseVersion?: string, isDraft: boolean }) {
         if (options.isDraft) {
             const editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${options.releaseVersion}/CHANGELOG.md`;
