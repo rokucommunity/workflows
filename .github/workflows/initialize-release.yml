@@ -17,6 +17,11 @@ on:
         description: "Update dependencies"
         required: true
         default: 'true'
+      ref:
+        type: string
+        description: "The ref to run the workflow"
+        default: "refs/heads/master"
+        required: true
 
 jobs:
   initialize-release:
@@ -26,6 +31,7 @@ jobs:
         uses: actions/checkout@master
         with:
           repository: rokucommunity/workflows
+          ref: ${{ inputs.ref }}
 
       - name: Setup node
         uses: actions/setup-node@master

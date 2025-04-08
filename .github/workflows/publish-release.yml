@@ -11,6 +11,12 @@ on:
             type: string
             description: "The type of release. Can be 'npm` or 'vsce'"
             required: true
+        repo-ref:
+            type: string
+            description: "The ref to run the workflow"
+            default: "refs/heads/master"
+            required: true
+
 
 jobs:
   publish-release:
@@ -20,6 +26,7 @@ jobs:
         uses: actions/checkout@master
         with:
           repository: rokucommunity/workflows
+          ref: ${{ inputs.repo-ref }}
 
       - name: Setup node
         uses: actions/setup-node@master
