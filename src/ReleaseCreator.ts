@@ -248,8 +248,9 @@ export class ReleaseCreator {
         releases = await this.listGitHubReleases(options.projectName);
         draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
         let body = this.makePullRequestBody({ ...options, githubReleaseLink: draftRelease.html_url, releaseVersion: releaseVersion, isDraft: true });
+        const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, '.tgz'));
         const tag = draftRelease.html_url.split('/').pop();
-        const linkToDownload = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${this.getAssetName(project.dir, '.tgz')}`;
+        const linkToDownload = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName}`;
         const sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
         const npmInstallCommand = `\`\`\`bash\nnpm install ${linkToDownload}\n\`\`\``;
         body = `${body}\n\nA new temporary npm package based on ${sha}. You can download it ${linkToDownload} or install it by running the following command:\n${npmInstallCommand}`;
@@ -522,6 +523,27 @@ export class ReleaseCreator {
         } else {
             const changeLogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/${options.ref}/CHANGELOG.md`;
             return `Link to [release](${options.githubReleaseLink}). [Changelog](${changeLogLink})`
+        }
+    }
+
+    private getArtifactName(artifacts: string[], assetNameHint: string) {
+        if (artifacts.length === 1) {
+            return artifacts[0];
+        }
+        //first filter out any artifacts that don't have the same extension
+        const filteredArtifacts = artifacts.filter(a => a.endsWith(path.extname(assetNameHint)));
+        if (filteredArtifacts.length === 1) {
+            return filteredArtifacts[0];
+        }
+        //then find the artifact that matches the name hint the most
+        const artifactName = path.basename(assetNameHint);
+        const matchingArtifacts = filteredArtifacts.filter(a => a.includes(artifactName));
+        if (matchingArtifacts.length === 1) {
+            return matchingArtifacts[0];
+        }
+        //if there are multiple, just return the first one
+        if (matchingArtifacts.length > 0) {
+            return matchingArtifacts[0];
         }
     }
 }
