@@ -6,7 +6,6 @@ on:
       branch:
         type: string
         description: "The branch to create the release from"
-        default: "master"
         required: true
       releaseType:
         type: string
@@ -16,12 +15,11 @@ on:
         type: string
         description: "Update dependencies"
         required: true
-        default: 'true'
-      ref:
+      workflows-ref:
         type: string
         description: "The ref to run the workflow"
-        default: "refs/heads/master"
-        required: true
+        required: false
+        default: "master"
 
 jobs:
   initialize-release:
@@ -31,7 +29,7 @@ jobs:
         uses: actions/checkout@master
         with:
           repository: rokucommunity/workflows
-          ref: ${{ inputs.ref }}
+          ref: ${{ inputs.workflows-ref }}
 
       - name: Setup node
         uses: actions/setup-node@master

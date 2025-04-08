@@ -15,11 +15,11 @@ on:
             type: string
             description: "The glob patters to find the release artifacts"
             required: true
-        ref:
+        workflows-ref:
             type: string
             description: "The ref to run the workflow"
-            default: "refs/heads/master"
-            required: true
+            required: false
+            default: "master"
 
 jobs:
   create-release-artifacts:
@@ -35,7 +35,7 @@ jobs:
         with:
           repository: rokucommunity/workflows
           path: nested-ci
-          ref: ${{ inputs.ref }}
+          ref: ${{ inputs.workflows-ref }}
 
       - name: Setup node
         uses: actions/setup-node@master
