@@ -257,7 +257,7 @@ export class ReleaseCreator {
             owner: this.ORG,
             repo: options.projectName,
             pull_number: pullRequest.number,
-            body: this.makePullRequestBody({ ...options, githubReleaseLink: draftRelease.html_url, releaseVersion: releaseVersion, isDraft: true }),
+            body: body
         });
 
         logger.decreaseIndent();
