@@ -528,23 +528,26 @@ export class ReleaseCreator {
     }
 
     private getArtifactName(artifacts: string[], assetNameHint: string) {
-        if (artifacts.length === 1) {
-            return artifacts[0];
+        function getPath() {
+            if (artifacts.length === 1) {
+                return artifacts[0];
+            }
+            //first filter out any artifacts that don't have the same extension
+            const filteredArtifacts = artifacts.filter(a => a.endsWith(path.extname(assetNameHint)));
+            if (filteredArtifacts.length === 1) {
+                return filteredArtifacts[0];
+            }
+            //then find the artifact that matches the name hint the most
+            const artifactName = path.basename(assetNameHint);
+            const matchingArtifacts = filteredArtifacts.filter(a => a.includes(artifactName));
+            if (matchingArtifacts.length === 1) {
+                return matchingArtifacts[0];
+            }
+            //if there are multiple, just return the first one
+            if (matchingArtifacts.length > 0) {
+                return matchingArtifacts[0];
+            }
         }
-        //first filter out any artifacts that don't have the same extension
-        const filteredArtifacts = artifacts.filter(a => a.endsWith(path.extname(assetNameHint)));
-        if (filteredArtifacts.length === 1) {
-            return filteredArtifacts[0];
-        }
-        //then find the artifact that matches the name hint the most
-        const artifactName = path.basename(assetNameHint);
-        const matchingArtifacts = filteredArtifacts.filter(a => a.includes(artifactName));
-        if (matchingArtifacts.length === 1) {
-            return matchingArtifacts[0];
-        }
-        //if there are multiple, just return the first one
-        if (matchingArtifacts.length > 0) {
-            return matchingArtifacts[0];
-        }
+        return getPath().split('/').pop() ?? assetNameHint; //if nothing is found, return the name hint
     }
 }
