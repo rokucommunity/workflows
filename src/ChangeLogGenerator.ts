@@ -49,11 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             fsExtra.outputFileSync(changelogPath, ChangelogGenerator.HEADER);
         }
 
-        let changelog = fsExtra.readFileSync(changelogPath).toString().trim();
+        let changelog = fsExtra.readFileSync(changelogPath).toString();
         if (changelog === '') {
             logger.log('No content in changelog.md file. Adding header');
             fsExtra.outputFileSync(changelogPath, ChangelogGenerator.HEADER);
-            changelog = fsExtra.readFileSync(changelogPath).toString().trim();
+            changelog = fsExtra.readFileSync(changelogPath).toString();
         }
 
         const [eolChar] = /\r?\n/.exec(changelog) ?? ['\r\n'];
