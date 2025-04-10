@@ -125,7 +125,6 @@ export class ReleaseCreator {
      * and add the changelog patch to the release notes
      */
     public async makeReleaseArtifacts(options: { branch: string; projectName: string; artifactPaths: string }) {
-        logger.log(`TEST THAT THIS IS CALLED`);
         logger.log(`Upload release... artifactPaths: ${options.artifactPaths}`);
         logger.increaseIndent();
 
