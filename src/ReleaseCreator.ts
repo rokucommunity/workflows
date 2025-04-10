@@ -113,7 +113,7 @@ export class ReleaseCreator {
             title: releaseVersion,
             head: `release/${releaseVersion}`,
             base: options.branch,
-            body: this.makePullRequestBody({ ...options, releaseVersion: releaseVersion, isDraft: true }),
+            body: this.makePullRequestBody({ ...options, releaseVersion: releaseVersion, masterRef: 'master', isDraft: true }),
             draft: false
         });
 
@@ -247,14 +247,25 @@ export class ReleaseCreator {
 
         releases = await this.listGitHubReleases(options.projectName);
         draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
-        let body = this.makePullRequestBody({ ...options, githubReleaseLink: draftRelease.html_url, releaseVersion: releaseVersion, isDraft: true });
+
         const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         logger.log(`Artifact name: ${artifactName}`);
         const tag = draftRelease.html_url.split('/').pop();
         const linkToDownload = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName}`;
         const sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
         const npmInstallCommand = `\`\`\`bash\nnpm install ${linkToDownload}\n\`\`\``;
-        body = `${body}\n\nA new temporary npm package based on ${sha}. You can download it [here](${linkToDownload}) or install it by running the following command:\n${npmInstallCommand}`;
+        let body = this.makePullRequestBody({
+            ...options,
+            githubReleaseLink: draftRelease.html_url,
+            releaseVersion: releaseVersion,
+            masterRef: `master`,
+            isDraft: true,
+            npm: {
+                sha: sha,
+                downloadLink: linkToDownload,
+                command: npmInstallCommand
+            }
+        });
         logger.log(`Update the pull request with the release link and edit changelog link`);
         await this.octokit.rest.pulls.update({
             owner: this.ORG,
@@ -376,11 +387,21 @@ export class ReleaseCreator {
 
         const releaseLink = `https://github.com/rokucommunity/${options.projectName}/releases/tag/v${releaseVersion}`;
 
+        logger.log(`Get the previous release version from package.json on the commit behind master HEAD`);
+        const masterJson = JSON.parse(utils.executeCommandWithOutput(`git show master~1:package.json`, { cwd: project.dir }));
+
+        logger.log(`Update the pull request with the release link and edit changelog link`);
         await this.octokit.rest.pulls.update({
             owner: this.ORG,
             repo: options.projectName,
             pull_number: pullRequest.number,
-            body: this.makePullRequestBody({ ...options, githubReleaseLink: releaseLink, releaseVersion: releaseVersion, isDraft: false }),
+            body: this.makePullRequestBody({
+                ...options,
+                githubReleaseLink: releaseLink,
+                releaseVersion: releaseVersion,
+                masterRef: `${masterJson.version}`,
+                isDraft: false
+            }),
         });
         logger.decreaseIndent();
     }
@@ -520,13 +541,37 @@ export class ReleaseCreator {
         return `${name}-${version}${extension}`;
     }
 
-    private makePullRequestBody(options: { githubReleaseLink?: string, projectName: string, ref?: string, releaseVersion?: string, isDraft: boolean }) {
+    private makePullRequestBody(options: {
+        githubReleaseLink?: string,
+        projectName: string,
+        releaseVersion?: string,
+        masterRef?: string,
+        isDraft: boolean,
+        npm?: {
+            sha: string,
+            downloadLink: string,
+            command: string
+        }
+    }) {
         if (options.isDraft) {
             const editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${options.releaseVersion}/CHANGELOG.md`;
-            return `${options.githubReleaseLink ? `Link to draft [release](${options.githubReleaseLink}). ` : ''}[Edit changelog](${editChangeLogLink})`
+            const whatsChangeLink = `https://github.com/${this.ORG}/${options.projectName}/compare/${options.masterRef}...release/${options.releaseVersion}`
+            return [
+                `This PR creates \`v${options.releaseVersion}\` release of \`${options.projectName}\`. Here are some useful links:\n`,
+                `${options.githubReleaseLink ? `- [GitHub Draft Release](${options.githubReleaseLink})\n` : ''}`,
+                `- [Edit changelog](${editChangeLogLink})\n`,
+                `- [See what's changed](${whatsChangeLink})`,
+                `${options.npm ? `\n\nClick [here]${options.npm.downloadLink} to download temporary npm package based on ${options.npm.sha}, or install with this command:\n ${options.npm.command}` : ''}`
+            ].join('');
         } else {
-            const changeLogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/${options.ref}/CHANGELOG.md`;
-            return `Link to [release](${options.githubReleaseLink}). [Changelog](${changeLogLink})`
+            const changeLogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/v${options.releaseVersion}/CHANGELOG.md`;
+            const whatsChangeLink = `https://github.com/${this.ORG}/${options.projectName}/compare/v${options.masterRef}...v${options.releaseVersion}`
+            return [
+                `This PR creates \`v${options.releaseVersion}\` release of \`${options.projectName}\`. Here are some useful links:\n`,
+                `- [GitHub Release](${options.githubReleaseLink})\n`,
+                `- [Changelog](${changeLogLink})\n`,
+                `- [See what's changed](${whatsChangeLink})`
+            ].join('');
         }
     }
 
