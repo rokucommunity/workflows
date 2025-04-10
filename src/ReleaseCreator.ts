@@ -105,6 +105,7 @@ export class ReleaseCreator {
             draft: true
         });
 
+        const prevReleaseVersion = this.getPreviousVersion(releaseVersion);
         //Creating the pull request will trigger another workflow, so it should be the last step of this flow
         logger.log(`Create pull request in ${options.projectName}: release/${releaseVersion} -> ${options.branch}`);
         const createResponse = await this.octokit.rest.pulls.create({
@@ -113,7 +114,7 @@ export class ReleaseCreator {
             title: releaseVersion,
             head: `release/${releaseVersion}`,
             base: options.branch,
-            body: this.makePullRequestBody({ ...options, releaseVersion: releaseVersion, masterRef: 'master', isDraft: true }),
+            body: this.makePullRequestBody({ ...options, releaseVersion: releaseVersion, prevReleaseVersion: prevReleaseVersion, isDraft: true }),
             draft: false
         });
 
@@ -247,6 +248,7 @@ export class ReleaseCreator {
         releases = await this.listGitHubReleases(options.projectName);
         draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
 
+        const prevReleaseVersion = this.getPreviousVersion(releaseVersion);
         const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         logger.log(`Artifact name: ${artifactName}`);
         let npm = undefined
@@ -261,7 +263,7 @@ export class ReleaseCreator {
             ...options,
             githubReleaseLink: draftRelease.html_url,
             releaseVersion: releaseVersion,
-            masterRef: `master`,
+            prevReleaseVersion: prevReleaseVersion,
             isDraft: true,
             npm: npm
         });
@@ -385,9 +387,7 @@ export class ReleaseCreator {
         const pullRequest = await this.getPullRequest(options.projectName, releaseVersion, 'closed');
 
         const releaseLink = `https://github.com/rokucommunity/${options.projectName}/releases/tag/v${releaseVersion}`;
-
-        logger.log(`Get the previous release version from package.json on the commit behind master HEAD`);
-        const masterJson = JSON.parse(utils.executeCommandWithOutput(`git show master~1:package.json`, { cwd: project.dir }));
+        const prevReleaseVersion = this.getPreviousVersion(releaseVersion);
 
         logger.log(`Update the pull request with the release link and edit changelog link`);
         await this.octokit.rest.pulls.update({
@@ -398,7 +398,7 @@ export class ReleaseCreator {
                 ...options,
                 githubReleaseLink: releaseLink,
                 releaseVersion: releaseVersion,
-                masterRef: `${masterJson.version}`,
+                prevReleaseVersion: prevReleaseVersion,
                 isDraft: false
             }),
         });
@@ -544,7 +544,7 @@ export class ReleaseCreator {
         githubReleaseLink?: string,
         projectName: string,
         releaseVersion?: string,
-        masterRef?: string,
+        prevReleaseVersion?: string,
         isDraft: boolean,
         npm?: {
             sha: string,
@@ -554,7 +554,7 @@ export class ReleaseCreator {
     }) {
         if (options.isDraft) {
             const editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${options.releaseVersion}/CHANGELOG.md`;
-            const whatsChangeLink = `https://github.com/${this.ORG}/${options.projectName}/compare/${options.masterRef}...release/${options.releaseVersion}`
+            const whatsChangeLink = `https://github.com/${this.ORG}/${options.projectName}/compare/v${options.prevReleaseVersion}...release/${options.releaseVersion}`
             return [
                 `This PR creates \`v${options.releaseVersion}\` release of \`${options.projectName}\`. Here are some useful links:\n`,
                 `${options.githubReleaseLink ? `- [GitHub Draft Release](${options.githubReleaseLink})\n` : ''}`,
@@ -564,7 +564,7 @@ export class ReleaseCreator {
             ].join('');
         } else {
             const changeLogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/v${options.releaseVersion}/CHANGELOG.md`;
-            const whatsChangeLink = `https://github.com/${this.ORG}/${options.projectName}/compare/v${options.masterRef}...v${options.releaseVersion}`
+            const whatsChangeLink = `https://github.com/${this.ORG}/${options.projectName}/compare/v${options.prevReleaseVersion}...v${options.releaseVersion}`
             return [
                 `This PR creates \`v${options.releaseVersion}\` release of \`${options.projectName}\`. Here are some useful links:\n`,
                 `- [GitHub Release](${options.githubReleaseLink})\n`,
@@ -596,5 +596,22 @@ export class ReleaseCreator {
             }
         }
         return findArtifact() ?? assetNameHint; //if nothing is found, return the name hint
+    }
+
+    private getPreviousVersion(currentVersion: string) {
+        if (!semver.valid(currentVersion)) {
+            return undefined;
+        }
+
+        let tags = utils.executeCommandWithOutput(`git tag --sort=-v:refname`).toString().trim().split('\n');
+        tags = tags.map(tag => tag.replace('v', '')).filter(tag => semver.valid(tag));
+        const index = tags.indexOf(currentVersion);
+        if (index === -1) {
+            return undefined;
+        }
+        if (index === 0) {
+            return undefined;
+        }
+        return tags[index - 1];
     }
 }
