@@ -557,20 +557,20 @@ export class ReleaseCreator {
             const editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${options.releaseVersion}/CHANGELOG.md`;
             const whatsChangeLink = `https://github.com/${this.ORG}/${options.projectName}/compare/${options.masterRef}...release/${options.releaseVersion}`
             return [
-                `This PR creates ${options.releaseVersion} release. Here are some useful links:\n`,
+                `This PR creates \`v${options.releaseVersion}\` release of \`${options.projectName}\`. Here are some useful links:\n`,
                 `${options.githubReleaseLink ? `- [GitHub Draft Release](${options.githubReleaseLink})\n` : ''}`,
                 `- [Edit changelog](${editChangeLogLink})\n`,
-                `- [See what's changed.](${whatsChangeLink})`,
-                `${options.npm ? `\n\nDownload temporary npm package based on ${options.npm.sha} [here](${options.npm.downloadLink}) or install with this command:\n ${options.npm.command}` : ''}`
+                `- [See what's changed](${whatsChangeLink})`,
+                `${options.npm ? `\n\nClick [here]${options.npm.downloadLink} to download temporary npm package based on ${options.npm.sha}, or install with this command:\n ${options.npm.command}` : ''}`
             ].join('');
         } else {
             const changeLogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/v${options.releaseVersion}/CHANGELOG.md`;
             const whatsChangeLink = `https://github.com/${this.ORG}/${options.projectName}/compare/v${options.masterRef}...v${options.releaseVersion}`
             return [
-                `This PR creates ${options.releaseVersion} release. Here are some useful links:\n`,
+                `This PR creates \`v${options.releaseVersion}\` release of \`${options.projectName}\`. Here are some useful links:\n`,
                 `- [GitHub Release](${options.githubReleaseLink})\n`,
                 `- [Changelog](${changeLogLink})\n`,
-                `- [See what's changed.](${whatsChangeLink})`
+                `- [See what's changed](${whatsChangeLink})`
             ].join('');
         }
     }
