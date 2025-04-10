@@ -520,12 +520,12 @@ export class ReleaseCreator {
         return `${name}-${version}${extension}`;
     }
 
-    private makePullRequestBody(options: { githubReleaseLink?: string, projectName: string, ref?: string, releaseVersion?: string, isDraft: boolean }) {
+    private makePullRequestBody(options: { githubReleaseLink?: string, projectName: string, releaseVersion?: string, isDraft: boolean }) {
         if (options.isDraft) {
             const editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${options.releaseVersion}/CHANGELOG.md`;
             return `${options.githubReleaseLink ? `Link to draft [release](${options.githubReleaseLink}). ` : ''}[Edit changelog](${editChangeLogLink})`
         } else {
-            const changeLogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/${options.ref}/CHANGELOG.md`;
+            const changeLogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/v${options.releaseVersion}/CHANGELOG.md`;
             return `Link to [release](${options.githubReleaseLink}). [Changelog](${changeLogLink})`
         }
     }
