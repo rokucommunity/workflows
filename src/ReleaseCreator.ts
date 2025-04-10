@@ -352,7 +352,7 @@ export class ReleaseCreator {
                 const json = JSON.parse(versions);
                 if (!(json.versions.find((version: any) => version.version === releaseVersion))) {
                     logger.inLog(`Publishing ${artifactName} to vscode`);
-                    // utils.executeCommand(`npx vsce publish --packagePath ${artifactName} -p ${process.env.VSCE_TOKEN}`, { cwd: project.dir });
+                    utils.executeCommand(`npx vsce publish --packagePath ${artifactName} -p ${process.env.VSCE_TOKEN}`, { cwd: project.dir });
                 } else {
                     logger.inLog(`Version ${releaseVersion} already exists in vscode`);
                 }
@@ -363,7 +363,7 @@ export class ReleaseCreator {
                 const versions = json?.extensions[0]?.allVersions ?? {};
                 if (!(releaseVersion in versions)) {
                     logger.inLog(`Publishing ${artifactName} to open - vsx`);
-                    // utils.executeCommand(`npx ovsx publish --packagePath ${artifactName} -p ${process.env.VSCE_TOKEN} --debug`, { cwd: project.dir });
+                    utils.executeCommand(`npx ovsx publish --packagePath ${artifactName} -p ${process.env.VSCE_TOKEN} --debug`, { cwd: project.dir });
                 } else {
                     logger.inLog(`Version ${releaseVersion} already exists in open-vsx`);
                 }
