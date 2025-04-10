@@ -249,21 +249,21 @@ export class ReleaseCreator {
 
         const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         logger.log(`Artifact name: ${artifactName}`);
-        const tag = draftRelease.html_url.split('/').pop();
-        const linkToDownload = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName}`;
-        const sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
-        const npmInstallCommand = `\`\`\`bash\nnpm install ${linkToDownload}\n\`\`\``;
+        let npm = undefined
+        if (path.extname(artifactName) === '.tgz') {
+            const tag = draftRelease.html_url.split('/').pop();
+            npm = {};
+            npm['downloadLink'] = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName}`;
+            npm['sha'] = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
+            npm['command'] = `\`\`\`bash\nnpm install ${npm.downloadLink}\n\`\`\``;
+        }
         let body = this.makePullRequestBody({
             ...options,
             githubReleaseLink: draftRelease.html_url,
             releaseVersion: releaseVersion,
             masterRef: `master`,
             isDraft: true,
-            npm: {
-                sha: sha,
-                downloadLink: linkToDownload,
-                command: npmInstallCommand
-            }
+            npm: npm
         });
         logger.log(`Update the pull request with the release link and edit changelog link`);
         await this.octokit.rest.pulls.update({
@@ -560,7 +560,7 @@ export class ReleaseCreator {
                 `${options.githubReleaseLink ? `- [GitHub Draft Release](${options.githubReleaseLink})\n` : ''}`,
                 `- [Edit changelog](${editChangeLogLink})\n`,
                 `- [See what's changed](${whatsChangeLink})`,
-                `${options.npm ? `\n\nClick [here]${options.npm.downloadLink} to download temporary npm package based on ${options.npm.sha}, or install with this command:\n ${options.npm.command}` : ''}`
+                `${options.npm ? `\n\nClick [here](${options.npm.downloadLink}) to download temporary npm package based on ${options.npm.sha}, or install with this command:\n ${options.npm.command}` : ''}`
             ].join('');
         } else {
             const changeLogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/v${options.releaseVersion}/CHANGELOG.md`;
