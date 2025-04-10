@@ -383,7 +383,7 @@ export class ReleaseCreator {
         const releaseLink = `https://github.com/rokucommunity/${options.projectName}/releases/tag/v${releaseVersion}`;
 
         logger.log(`Get the previous release version from package.json on master`);
-        const masterJson = JSON.parse(utils.executeCommandWithOutput(`git show master:package.json`));
+        const masterJson = JSON.parse(utils.executeCommandWithOutput(`git show master:package.json`, { cwd: project.dir }));
 
         logger.log(`Update the pull request with the release link and edit changelog link`);
         await this.octokit.rest.pulls.update({
