@@ -247,20 +247,25 @@ export class ReleaseCreator {
 
         releases = await this.listGitHubReleases(options.projectName);
         draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
-        let body = this.makePullRequestBody({
-            ...options,
-            githubReleaseLink: draftRelease.html_url,
-            releaseVersion: releaseVersion,
-            masterRef: `master`,
-            isDraft: true
-        });
+
         const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         logger.log(`Artifact name: ${artifactName}`);
         const tag = draftRelease.html_url.split('/').pop();
         const linkToDownload = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName}`;
         const sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
         const npmInstallCommand = `\`\`\`bash\nnpm install ${linkToDownload}\n\`\`\``;
-        body = `${body}\n\nA new temporary npm package based on ${sha}. You can download it [here](${linkToDownload}) or install it by running the following command:\n${npmInstallCommand}`;
+        let body = this.makePullRequestBody({
+            ...options,
+            githubReleaseLink: draftRelease.html_url,
+            releaseVersion: releaseVersion,
+            masterRef: `master`,
+            isDraft: true,
+            npm: {
+                sha: sha,
+                downloadLink: linkToDownload,
+                command: npmInstallCommand
+            }
+        });
         logger.log(`Update the pull request with the release link and edit changelog link`);
         await this.octokit.rest.pulls.update({
             owner: this.ORG,
@@ -536,15 +541,33 @@ export class ReleaseCreator {
         return `${name}-${version}${extension}`;
     }
 
-    private makePullRequestBody(options: { githubReleaseLink?: string, projectName: string, releaseVersion?: string, masterRef?: string, isDraft: boolean }) {
+    private makePullRequestBody(options: {
+        githubReleaseLink?: string,
+        projectName: string,
+        releaseVersion?: string,
+        masterRef?: string,
+        isDraft: boolean,
+        npm?: {
+            sha: string,
+            downloadLink: string,
+            command: string
+        }
+    }) {
         if (options.isDraft) {
             const editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${options.releaseVersion}/CHANGELOG.md`;
             const whatsChangeLink = `https://github.com/${this.ORG}/${options.projectName}/compare/${options.masterRef}...release/${options.releaseVersion}`
-            return `${options.githubReleaseLink ? `Link to draft [release](${options.githubReleaseLink}). ` : ''}[Edit changelog](${editChangeLogLink}). See whats [changed.](${whatsChangeLink})`;
+            return `This PR creates ${options.releaseVersion} release. Here are some useful links:\n \
+            ${options.githubReleaseLink ? `* [GitHub Draft Release](${options.githubReleaseLink})\n` : ''} \
+            * [Edit changelog](${editChangeLogLink})\n \
+            * [See what's changed.](${whatsChangeLink}) \
+            ${options.npm ? `\n\nDownload temporary npm package based on ${options.npm.sha} [here](${options.npm.downloadLink} or install with this command:\n ${options.npm.command}` : ''}`;
         } else {
             const changeLogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/v${options.releaseVersion}/CHANGELOG.md`;
             const whatsChangeLink = `https://github.com/${this.ORG}/${options.projectName}/compare/v${options.masterRef}...v${options.releaseVersion}`
-            return `Link to [release](${options.githubReleaseLink}). [Changelog](${changeLogLink}). See whats [changed.](${whatsChangeLink})`
+            return `This PR creates ${options.releaseVersion} release. Here are some useful links:\n \
+            * [GitHub Release](${options.githubReleaseLink})\n \
+            * [Changelog](${changeLogLink})\n \
+            * [See what's changed.](${whatsChangeLink})`;
         }
     }
 
