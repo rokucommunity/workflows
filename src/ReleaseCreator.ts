@@ -345,7 +345,7 @@ export class ReleaseCreator {
         const artifactName = this.getArtifactName(assets.map(a => a.name), this.getAssetName(project.dir, path.extname(assets[0].name)));
 
         logger.log(`Publishing artifact ${artifactName} to ${options.releaseType}`);
-        if (options.releaseType === 'npm') {
+        if (options.releaseType === 'npm' && false) {
             const packageName = this.getPackageName(project.dir);
             const versions = utils.executeCommandWithOutput(`npm view ${packageName} versions --json`).toString();
             const json = JSON.parse(versions);
@@ -356,7 +356,7 @@ export class ReleaseCreator {
             } else {
                 logger.inLog(`Version ${releaseVersion} already exists in npm`);
             }
-        } else if (options.releaseType === 'vsce') {
+        } else if (options.releaseType === 'vsce' || true) {
             const vsceName = this.getVscePackageName(project.dir);
             { //Scope for vscode
                 const versions = utils.executeCommandWithOutput(`npx @vscode/vsce show ${vsceName} --json`).toString();
