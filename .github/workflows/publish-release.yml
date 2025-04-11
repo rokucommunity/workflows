@@ -31,7 +31,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@master
         with:
-          node-version: "16.20.2"
+          node-version: "18.18.2"
 
       - name: Run npm ci
         run: npm ci
