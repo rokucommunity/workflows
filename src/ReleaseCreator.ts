@@ -374,7 +374,7 @@ export class ReleaseCreator {
                 const versions = json?.extensions[0]?.allVersions ?? {};
                 if (!(releaseVersion in versions)) {
                     logger.inLog(`Publishing ${artifactName} to open - vsx`);
-                    utils.executeCommand(`npx ovsx publish --packagePath ${artifactName} -p ${process.env.VSCE_TOKEN} --debug`, { cwd: project.dir });
+                    utils.executeCommand(`npx ovsx publish --packagePath ${artifactName} -p ${process.env.OPEN_VSX_TOKEN} --debug`, { cwd: project.dir });
                 } else {
                     logger.inLog(`Version ${releaseVersion} already exists in open-vsx`);
                 }
