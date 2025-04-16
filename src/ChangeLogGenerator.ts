@@ -57,6 +57,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         }
 
         const [eolChar] = /\r?\n/.exec(changelog) ?? ['\r\n'];
+        if (!changelog.includes(ChangelogGenerator.MARKER)) {
+            logger.log('Could not find marker in changelog. Adding it');
+            changelog = ChangelogGenerator.MARKER + eolChar + changelog;
+        }
         changelog = changelog.replace(
             ChangelogGenerator.MARKER,
             ChangelogGenerator.MARKER + lines.join(eolChar)
