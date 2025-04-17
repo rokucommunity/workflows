@@ -68,4 +68,5 @@ jobs:
             --projectName "${{ github.repository }}" \
             --releaseType "${{ inputs.releaseType }}" \
             --branch "${{ inputs.branch }}" \
+            --preid "${{ inputs.preid }}" \
             --installDependencies "${{ inputs.installDependencies == 'true' }}"
