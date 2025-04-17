@@ -12,7 +12,7 @@ import { ChangelogGenerator } from './ChangeLogGenerator';
 import { Project, ProjectManager } from './ProjectManager';
 import * as diffParse from 'parse-diff';
 
-type ReleaseType = 'major' | 'minor' | 'patch';
+type ReleaseType = 'major' | 'minor' | 'patch' | 'pre' | 'premajor' | 'preminor' | 'prepatch';
 
 /**
  * This class is responsible for managing the local git repository, GitHub PRs, and GitHub Releases
@@ -36,7 +36,19 @@ export class ReleaseCreator {
      * updating the changelog and version, creating a release pull request
      * and creating a GitHub release
      */
-    public async initializeRelease(options: { projectName: string, releaseType: ReleaseType | string, branch: string, installDependencies: boolean, testRun?: boolean }) {
+    public async initializeRelease(options: {
+        projectName: string,
+        releaseType: ReleaseType | string,
+        branch: string,
+        installDependencies: boolean,
+        preid: string,
+        testRun?: boolean
+    }) {
+        if (options.releaseType.startsWith('pre') && !options.preid) {
+            logger.log(`Preid is required for pre releases`);
+            return;
+        }
+
         logger.log(`Intialize release... releaseType: ${options.releaseType}, branch: ${options.branch}`);
         logger.increaseIndent();
 
@@ -58,7 +70,7 @@ export class ReleaseCreator {
         }
 
         logger.log(`Get the incremented release version`);
-        const releaseVersion = await this.getNewVersion(options.releaseType as ReleaseType, project.dir);
+        const releaseVersion = await this.getNewVersion(options.releaseType as ReleaseType, options.preid, project.dir);
 
         const releases = await this.listGitHubReleases(options.projectName);
         logger.log(`Check if a GitHub release already exists for ${releaseVersion}`);
@@ -88,7 +100,7 @@ export class ReleaseCreator {
         }
 
         logger.log(`Create commit with version increment and changelog updates`);
-        await this.incrementedVersion(options.releaseType as ReleaseType, project.dir);
+        await this.incrementedVersion(options.releaseType as ReleaseType, options.preid, project.dir);
         utils.executeCommandWithOutput(`git add package.json package-lock.json CHANGELOG.md`, { cwd: project.dir });
         utils.executeCommandWithOutput(`git commit -m 'Increment version to ${releaseVersion}'`, { cwd: project.dir });
 
@@ -474,16 +486,21 @@ export class ReleaseCreator {
         return packageJson.version;
     }
 
-    private async getNewVersion(releaseType: ReleaseType, dir: string) {
+    private async getNewVersion(releaseType: ReleaseType, preid: string, dir: string) {
         const packageJson = await fsExtra.readJson(path.join(dir, 'package.json'));
         logger.log(`Current version: ${packageJson.version}`);
 
-        return semver.inc(packageJson.version, releaseType);
+        if (preid === '') {
+            return semver.inc(packageJson.version, releaseType);
+        } else {
+            return semver.inc(packageJson.version, releaseType, preid);
+        }
     }
 
-    private async incrementedVersion(releaseType: ReleaseType, dir: string) {
-        const version = await this.getNewVersion(releaseType, dir);
+    private async incrementedVersion(releaseType: ReleaseType, preid: string, dir: string) {
+        const version = await this.getNewVersion(releaseType, preid, dir);
         logger.log(`Increment version on package.json to ${version}`);
+        //TODO test that this works without preid
         utils.executeCommand(`npm version ${version} --no-commit-hooks --no-git-tag-version --ignore-scripts`, { cwd: dir });
 
         return version;
@@ -603,12 +620,12 @@ export class ReleaseCreator {
             return undefined;
         }
 
-        let tags = utils.executeCommandWithOutput(`git tag --sort=-v:refname`, { cwd: dir }).toString().trim().split('\n');
+        let tags = utils.executeCommandWithOutput(`git tag`, { cwd: dir }).toString().trim().split('\n');
         tags = tags.map(tag => tag.replace('v', '')).filter(tag => semver.valid(tag));
         if (tags.indexOf(currentVersion) === -1) {
             tags.push(currentVersion);
-            tags.sort(semver.rcompare);
         }
+        tags.sort(semver.rcompare);
         const index = tags.indexOf(currentVersion);
         if (index === -1) {
             return undefined;
