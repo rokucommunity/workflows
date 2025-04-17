@@ -11,6 +11,10 @@ on:
         type: string
         description: "The type of release: major, minor, or patch"
         required: true
+      preid:
+        type: string
+        description: "The pre-release identifier"
+        required: true
       installDependencies:
         type: string
         description: "Update dependencies"
