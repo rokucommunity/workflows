@@ -113,6 +113,7 @@ export class ReleaseCreator {
             repo: options.projectName,
             tag_name: `v${releaseVersion}`,
             name: releaseVersion,
+            target_commitish: `release/${releaseVersion}`,
             body: `Release ${releaseVersion}`,
             draft: true
         });
