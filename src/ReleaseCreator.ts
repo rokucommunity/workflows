@@ -629,19 +629,20 @@ export class ReleaseCreator {
             return undefined;
         }
 
-        let tags = utils.executeCommandWithOutput(`git tag`, { cwd: dir }).toString().trim().split('\n');
+        let tags = utils.executeCommandWithOutput(`git tag --sort=-creatordate --merged HEAD`, { cwd: dir }).toString().trim().split('\n');
         tags = tags.map(tag => tag.replace('v', '')).filter(tag => semver.valid(tag));
-        if (tags.indexOf(currentVersion) === -1) {
-            tags.push(currentVersion);
+        let index = 0;
+        if (semver.prerelease(currentVersion)) {
+            const currentVersionWithoutPreid = currentVersion.replace(/(\d+)(\.\d+)(\.\d+-.+)(\.\d+)/, '$1$2$3');
+            const preidIndex = tags.findIndex(tag => tag.startsWith(currentVersionWithoutPreid));
+            if (preidIndex >= 0) {
+                index = preidIndex;
+            }
+
         }
-        tags.sort(semver.rcompare);
-        const index = tags.indexOf(currentVersion);
-        if (index === -1) {
+        if (index < 0) {
             return undefined;
         }
-        if (index === 0) {
-            return undefined;
-        }
-        return tags[index + 1];
+        return tags[index];
     }
 }
