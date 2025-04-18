@@ -138,7 +138,7 @@ export class ReleaseCreator {
      * Replaces the release artifacts to the GitHub release
      * and add the changelog patch to the release notes
      */
-    public async makeReleaseArtifacts(options: { branch: string; projectName: string; artifactPaths: string }) {
+    public async makeReleaseArtifacts(options: { branch: string; projectName: string; artifactPaths: string, testRun?: boolean }) {
         logger.log(`Upload release... artifactPaths: ${options.artifactPaths}`);
         logger.increaseIndent();
 
@@ -173,6 +173,10 @@ export class ReleaseCreator {
         });
         logger.log(`Delete all release assets for ${options.projectName}`);
         for (const asset of assets) {
+            if (options.testRun) {
+                logger.log(`TEST RUN: Skipping delete of asset ${asset.name}`);
+                continue;
+            }
             const deleteResponse = await this.octokit.repos.deleteReleaseAsset({
                 owner: this.ORG,
                 repo: options.projectName,
@@ -193,6 +197,10 @@ export class ReleaseCreator {
         for (const artifact of artifacts) {
             const fileName = artifact.split('/').pop();
             logger.inLog(`Uploading ${fileName}`);
+            if (options.testRun) {
+                logger.log(`TEST RUN: Skipping upload of asset ${fileName}`);
+                continue;
+            }
             const uploadResponse = await this.octokit.repos.uploadReleaseAsset({
                 owner: this.ORG,
                 repo: options.projectName,
