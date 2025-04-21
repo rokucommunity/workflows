@@ -11,9 +11,9 @@ on:
         type: string
         description: "The type of release: major, minor, or patch"
         required: true
-      preid:
+      customVersion:
         type: string
-        description: "The pre-release identifier"
+        description: "The custom version to use"
         required: true
       installDependencies:
         type: string
