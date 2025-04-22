@@ -624,6 +624,13 @@ export class ReleaseCreator {
 
         let tags = utils.executeCommandWithOutput(`git tag --merged HEAD`, { cwd: dir }).toString().trim().split('\n');
         tags = tags.map(tag => tag.replace('v', '')).filter(tag => semver.valid(tag));
-        return semver.rsort(tags)[0];
+        tags = [currentVersion, ...tags];
+        tags = semver.rsort(tags);
+        let index = tags.indexOf(currentVersion);
+        if (index === -1) {
+            return undefined;
+        }
+        return tags[index + 1] ?? undefined;
+
     }
 }

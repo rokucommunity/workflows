@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "package": "echo \"Hello World!\" > hello.tgz",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npx mocha --import=tsx --recursive \"./src/**/*.spec.ts\""
   },
   "keywords": [],
   "author": "",
@@ -22,10 +22,18 @@
     "yargs": "^17.7.2"
   },
   "devDependencies": {
+    "@types/chai": "^5.2.1",
+    "@types/mocha": "^10.0.10",
+    "@types/sinon": "^17.0.4",
     "@types/yargs": "^17.0.33",
     "@vscode/vsce": "^2.22.0",
+    "chai": "^5.2.0",
+    "mocha": "^11.1.0",
+    "nyc": "^17.1.0",
     "ovsx": "^0.8.3",
+    "sinon": "^20.0.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.3",
     "typescript": "^5.6.2"
   }
 }
