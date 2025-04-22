@@ -52,7 +52,10 @@ export class ProjectManager {
     }
 
     public static async installDependencies(project: Project, installDependencies: boolean) {
-        project.lastTag = ProjectManager.getInstance().getLastTag(project.dir);
+        project.lastTag = ProjectManager.getPreviousVersion(
+            fsExtra.readJsonSync(s`${project.dir}/package.json`).version,
+            project.dir
+        );
         let latestReleaseVersion;
         if (!project.lastTag) {
             logger.log('Not tags were found. Set the lastTag to the first commit hash');
@@ -201,22 +204,21 @@ export class ProjectManager {
         install(project, 'devDependencies', '--save-dev');
     }
 
-    /**
-     * Find the highest non-prerelease tag for this repository
-     */
-    private getLastTag(cwd: string) {
-        const allTags = semver.sort(
-            utils.executeCommandWithOutput(`git tag --sort version:refname`, { cwd: cwd })
-                .toString()
-                .split(/\r?\n/)
-                .map(x => x.trim())
-                //only keep valid version tags
-                .filter(x => semver.valid(x))
-                //exclude prerelease versions
-                .filter(x => !semver.prerelease(x))
-        ).reverse();
+    public static getPreviousVersion(currentVersion: string, dir: string) {
+        if (!semver.valid(currentVersion)) {
+            return undefined;
+        }
 
-        return allTags[0];
+        let tags = utils.executeCommandWithOutput(`git tag --merged HEAD`, { cwd: dir }).toString().trim().split('\n');
+        tags = tags.map(tag => tag.replace('v', '')).filter(tag => semver.valid(tag));
+        tags = [currentVersion, ...tags];
+        tags = semver.rsort(tags);
+        let index = tags.indexOf(currentVersion);
+        if (index === -1) {
+            return undefined;
+        }
+        return tags[index + 1] ?? undefined;
+
     }
 }
 

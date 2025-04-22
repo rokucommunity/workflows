@@ -113,7 +113,7 @@ export class ReleaseCreator {
             draft: true
         });
 
-        const prevReleaseVersion = this.getPreviousVersion(releaseVersion, project.dir);
+        const prevReleaseVersion = ProjectManager.getPreviousVersion(releaseVersion, project.dir);
         //Creating the pull request will trigger another workflow, so it should be the last step of this flow
         logger.log(`Create pull request in ${options.projectName}: release/${releaseVersion} -> ${options.branch}`);
         const createResponse = await this.octokit.rest.pulls.create({
@@ -264,7 +264,7 @@ export class ReleaseCreator {
         releases = await this.listGitHubReleases(options.projectName);
         draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
 
-        const prevReleaseVersion = this.getPreviousVersion(releaseVersion, project.dir);
+        const prevReleaseVersion = ProjectManager.getPreviousVersion(releaseVersion, project.dir);
         const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         logger.log(`Artifact name: ${artifactName}`);
         let npm = undefined
@@ -404,7 +404,7 @@ export class ReleaseCreator {
         const pullRequest = await this.getPullRequest(options.projectName, releaseVersion, 'closed');
 
         const releaseLink = `https://github.com/rokucommunity/${options.projectName}/releases/tag/v${releaseVersion}`;
-        const prevReleaseVersion = this.getPreviousVersion(releaseVersion, project.dir);
+        const prevReleaseVersion = ProjectManager.getPreviousVersion(releaseVersion, project.dir);
 
         logger.log(`Update the pull request with the release link and edit changelog link`);
         await this.octokit.rest.pulls.update({
@@ -618,20 +618,4 @@ export class ReleaseCreator {
         return findArtifact() ?? assetNameHint; //if nothing is found, return the name hint
     }
 
-    private getPreviousVersion(currentVersion: string, dir: string) {
-        if (!semver.valid(currentVersion)) {
-            return undefined;
-        }
-
-        let tags = utils.executeCommandWithOutput(`git tag --merged HEAD`, { cwd: dir }).toString().trim().split('\n');
-        tags = tags.map(tag => tag.replace('v', '')).filter(tag => semver.valid(tag));
-        tags = [currentVersion, ...tags];
-        tags = semver.rsort(tags);
-        let index = tags.indexOf(currentVersion);
-        if (index === -1) {
-            return undefined;
-        }
-        return tags[index + 1] ?? undefined;
-
-    }
 }
