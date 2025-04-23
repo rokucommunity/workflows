@@ -12,7 +12,7 @@ import { ChangelogGenerator } from './ChangeLogGenerator';
 import { Project, ProjectManager } from './ProjectManager';
 import * as diffParse from 'parse-diff';
 
-type ReleaseType = 'major' | 'minor' | 'patch';
+type ReleaseType = 'major' | 'minor' | 'patch' | 'prerelease' | 'custom';
 
 /**
  * This class is responsible for managing the local git repository, GitHub PRs, and GitHub Releases
@@ -36,7 +36,14 @@ export class ReleaseCreator {
      * updating the changelog and version, creating a release pull request
      * and creating a GitHub release
      */
-    public async initializeRelease(options: { projectName: string, releaseType: ReleaseType | string, branch: string, installDependencies: boolean, testRun?: boolean }) {
+    public async initializeRelease(options: {
+        projectName: string,
+        releaseType: ReleaseType | string,
+        branch: string,
+        installDependencies: boolean,
+        customVersion: string,
+        testRun?: boolean
+    }) {
         logger.log(`Intialize release... releaseType: ${options.releaseType}, branch: ${options.branch}`);
         logger.increaseIndent();
 
@@ -58,7 +65,7 @@ export class ReleaseCreator {
         }
 
         logger.log(`Get the incremented release version`);
-        const releaseVersion = await this.getNewVersion(options.releaseType as ReleaseType, project.dir);
+        const releaseVersion = await this.getNewVersion(options.releaseType as ReleaseType, options.customVersion, project.dir);
 
         const releases = await this.listGitHubReleases(options.projectName);
         logger.log(`Check if a GitHub release already exists for ${releaseVersion}`);
@@ -88,7 +95,7 @@ export class ReleaseCreator {
         }
 
         logger.log(`Create commit with version increment and changelog updates`);
-        await this.incrementedVersion(options.releaseType as ReleaseType, project.dir);
+        await this.incrementedVersion(options.releaseType as ReleaseType, options.customVersion, project.dir);
         utils.executeCommandWithOutput(`git add package.json package-lock.json CHANGELOG.md`, { cwd: project.dir });
         utils.executeCommandWithOutput(`git commit -m 'Increment version to ${releaseVersion}'`, { cwd: project.dir });
 
@@ -101,11 +108,12 @@ export class ReleaseCreator {
             repo: options.projectName,
             tag_name: `v${releaseVersion}`,
             name: releaseVersion,
+            target_commitish: `release/${releaseVersion}`,
             body: `Release ${releaseVersion}`,
             draft: true
         });
 
-        const prevReleaseVersion = this.getPreviousVersion(releaseVersion, project.dir);
+        const prevReleaseVersion = ProjectManager.getPreviousVersion(releaseVersion, project.dir);
         //Creating the pull request will trigger another workflow, so it should be the last step of this flow
         logger.log(`Create pull request in ${options.projectName}: release/${releaseVersion} -> ${options.branch}`);
         const createResponse = await this.octokit.rest.pulls.create({
@@ -125,7 +133,7 @@ export class ReleaseCreator {
      * Replaces the release artifacts to the GitHub release
      * and add the changelog patch to the release notes
      */
-    public async makeReleaseArtifacts(options: { branch: string; projectName: string; artifactPaths: string }) {
+    public async makeReleaseArtifacts(options: { branch: string; projectName: string; artifactPaths: string, testRun?: boolean }) {
         logger.log(`Upload release... artifactPaths: ${options.artifactPaths}`);
         logger.increaseIndent();
 
@@ -160,6 +168,10 @@ export class ReleaseCreator {
         });
         logger.log(`Delete all release assets for ${options.projectName}`);
         for (const asset of assets) {
+            if (options.testRun) {
+                logger.log(`TEST RUN: Skipping delete of asset ${asset.name}`);
+                continue;
+            }
             const deleteResponse = await this.octokit.repos.deleteReleaseAsset({
                 owner: this.ORG,
                 repo: options.projectName,
@@ -180,6 +192,10 @@ export class ReleaseCreator {
         for (const artifact of artifacts) {
             const fileName = artifact.split('/').pop();
             logger.inLog(`Uploading ${fileName}`);
+            if (options.testRun) {
+                logger.log(`TEST RUN: Skipping upload of asset ${fileName}`);
+                continue;
+            }
             const uploadResponse = await this.octokit.repos.uploadReleaseAsset({
                 owner: this.ORG,
                 repo: options.projectName,
@@ -248,7 +264,7 @@ export class ReleaseCreator {
         releases = await this.listGitHubReleases(options.projectName);
         draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
 
-        const prevReleaseVersion = this.getPreviousVersion(releaseVersion, project.dir);
+        const prevReleaseVersion = ProjectManager.getPreviousVersion(releaseVersion, project.dir);
         const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         logger.log(`Artifact name: ${artifactName}`);
         let npm = undefined
@@ -350,10 +366,11 @@ export class ReleaseCreator {
             const packageName = this.getPackageName(project.dir);
             const versions = utils.executeCommandWithOutput(`npm view ${packageName} versions --json`).toString();
             const json = JSON.parse(versions);
+            const releaseTag = semver.prerelease(releaseVersion) ? `next` : `latest`;
             if (!json.includes(releaseVersion)) {
                 logger.inLog(`Publishing ${artifactName} to npm`);
                 utils.executeCommand(`echo "//registry.npmjs.org/:_authToken=${process.env.NPM_TOKEN}" > ./.npmrc`, { cwd: project.dir });
-                utils.executeCommand(`npm publish ${artifactName}`, { cwd: project.dir });
+                utils.executeCommand(`npm publish ${artifactName} --tag ${releaseTag}`, { cwd: project.dir });
             } else {
                 logger.inLog(`Version ${releaseVersion} already exists in npm`);
             }
@@ -387,7 +404,7 @@ export class ReleaseCreator {
         const pullRequest = await this.getPullRequest(options.projectName, releaseVersion, 'closed');
 
         const releaseLink = `https://github.com/rokucommunity/${options.projectName}/releases/tag/v${releaseVersion}`;
-        const prevReleaseVersion = this.getPreviousVersion(releaseVersion, project.dir);
+        const prevReleaseVersion = ProjectManager.getPreviousVersion(releaseVersion, project.dir);
 
         logger.log(`Update the pull request with the release link and edit changelog link`);
         await this.octokit.rest.pulls.update({
@@ -474,15 +491,18 @@ export class ReleaseCreator {
         return packageJson.version;
     }
 
-    private async getNewVersion(releaseType: ReleaseType, dir: string) {
+    private async getNewVersion(releaseType: ReleaseType, customVersion: string, dir: string) {
+        if (customVersion) {
+            return customVersion;
+        }
         const packageJson = await fsExtra.readJson(path.join(dir, 'package.json'));
         logger.log(`Current version: ${packageJson.version}`);
 
         return semver.inc(packageJson.version, releaseType);
     }
 
-    private async incrementedVersion(releaseType: ReleaseType, dir: string) {
-        const version = await this.getNewVersion(releaseType, dir);
+    private async incrementedVersion(releaseType: ReleaseType, customVersion: string, dir: string) {
+        const version = await this.getNewVersion(releaseType, customVersion, dir);
         logger.log(`Increment version on package.json to ${version}`);
         utils.executeCommand(`npm version ${version} --no-commit-hooks --no-git-tag-version --ignore-scripts`, { cwd: dir });
 
@@ -598,24 +618,4 @@ export class ReleaseCreator {
         return findArtifact() ?? assetNameHint; //if nothing is found, return the name hint
     }
 
-    private getPreviousVersion(currentVersion: string, dir: string) {
-        if (!semver.valid(currentVersion)) {
-            return undefined;
-        }
-
-        let tags = utils.executeCommandWithOutput(`git tag --sort=-v:refname`, { cwd: dir }).toString().trim().split('\n');
-        tags = tags.map(tag => tag.replace('v', '')).filter(tag => semver.valid(tag));
-        if (tags.indexOf(currentVersion) === -1) {
-            tags.push(currentVersion);
-            tags.sort(semver.rcompare);
-        }
-        const index = tags.indexOf(currentVersion);
-        if (index === -1) {
-            return undefined;
-        }
-        if (index === 0) {
-            return undefined;
-        }
-        return tags[index + 1];
-    }
 }

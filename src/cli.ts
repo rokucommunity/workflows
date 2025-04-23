@@ -14,9 +14,10 @@ let options = yargs
             .option('branch', { type: 'string', description: 'The branch to create the release from' })
             .option('releaseType', { type: 'string', description: 'The version number to use for creating the release' })
             .option('installDependencies', { type: 'boolean', description: 'Install dependencies before running the release' })
+            .option('customVersion', { type: 'string', description: 'User specified release version. May include prerelease ids', default: '' })
             .options('testRun', { type: 'boolean', description: 'Run the release in test mode' })
     }, (argv) => {
-        if (!['major', 'minor', 'patch'].includes(argv.releaseType)) {
+        if (!['major', 'minor', 'patch', 'prerelease', 'custom'].includes(argv.releaseType)) {
             console.error(`Invalid release version. Must be one of 'major', 'minor', or 'patch'`);
             process.exit(1);
         }

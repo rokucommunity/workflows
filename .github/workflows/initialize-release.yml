@@ -11,6 +11,10 @@ on:
         type: string
         description: "The type of release: major, minor, or patch"
         required: true
+      customVersion:
+        type: string
+        description: "The custom version to use"
+        required: true
       installDependencies:
         type: string
         description: "Update dependencies"
@@ -64,4 +68,5 @@ jobs:
             --projectName "${{ github.repository }}" \
             --releaseType "${{ inputs.releaseType }}" \
             --branch "${{ inputs.branch }}" \
+            --customVersion "${{ inputs.customVersion }}" \
             --installDependencies "${{ inputs.installDependencies == 'true' }}"
