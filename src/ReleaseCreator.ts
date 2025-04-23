@@ -324,6 +324,8 @@ export class ReleaseCreator {
 
         if (shouldMarkAsPublished) {
             logger.log(`Remove draft status from release ${releaseVersion}`);
+            utils.executeCommand(`git tag v${releaseVersion} ${options.ref}`, { cwd: project.dir });
+            utils.executeCommand(`git push origin v${releaseVersion}`, { cwd: project.dir });
             await this.octokit.rest.repos.updateRelease({
                 owner: this.ORG,
                 repo: options.projectName,
