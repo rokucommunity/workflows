@@ -279,13 +279,13 @@ export class ReleaseCreator {
         const tempArtifact = this.getArtifactNameWithCurrentDate(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         logger.log(`Artifact name: ${artifactName}`);
         let npm = undefined
+        const tag = draftRelease.html_url.split('/').pop();
         const tempDownloadLink = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${tempArtifact}`;
         const npmCommand = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName}`;
         if (path.extname(artifactName) === '.tgz') {
-            const tag = draftRelease.html_url.split('/').pop();
             npm = {};
-            npm['downloadLink'] = tempDownloadLink,
-                npm['sha'] = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
+            npm['downloadLink'] = tempDownloadLink;
+            npm['sha'] = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
             npm['command'] = `\`\`\`bash\nnpm install ${npmCommand}\n\`\`\``;
         }
         let body = this.makePullRequestBody({
