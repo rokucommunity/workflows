@@ -275,15 +275,18 @@ export class ReleaseCreator {
         draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
 
         const prevReleaseVersion = ProjectManager.getPreviousVersion(releaseVersion, project.dir);
-        const artifactName = this.getArtifactNameWithCurrentDate(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
+        const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
+        const tempArtifact = this.getArtifactNameWithCurrentDate(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         logger.log(`Artifact name: ${artifactName}`);
         let npm = undefined
+        const tempDownloadLink = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${tempArtifact}`;
+        const npmCommand = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName}`;
         if (path.extname(artifactName) === '.tgz') {
             const tag = draftRelease.html_url.split('/').pop();
             npm = {};
-            npm['downloadLink'] = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName}`;
-            npm['sha'] = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
-            npm['command'] = `\`\`\`bash\nnpm install ${npm.downloadLink}\n\`\`\``;
+            npm['downloadLink'] = tempDownloadLink,
+                npm['sha'] = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
+            npm['command'] = `\`\`\`bash\nnpm install ${npmCommand}\n\`\`\``;
         }
         let body = this.makePullRequestBody({
             ...options,
