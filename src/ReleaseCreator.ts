@@ -606,7 +606,7 @@ export class ReleaseCreator {
                 `${options.githubReleaseLink ? `- [GitHub Draft Release](${options.githubReleaseLink})\n` : ''}`,
                 `- [Edit changelog](${editChangeLogLink})\n`,
                 `- [See what's changed](${whatsChangeLink})`,
-                `${options.npm ? `\n\nClick [here](${options.npm.downloadLink}) to download temporary npm package based on ${options.npm.sha}, or install with this command:\n ${options.npm.command}` : ''}`
+                `${options.npm ? `\n\nClick [here](${options.npm.downloadLink}) to download a temporary npm package based on ${options.npm.sha}, or install with this command:\n ${options.npm.command}` : ''}`
             ].join('');
         } else {
             const changeLogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/v${options.releaseVersion}/CHANGELOG.md`;
