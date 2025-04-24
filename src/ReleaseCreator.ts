@@ -191,7 +191,7 @@ export class ReleaseCreator {
 
         logger.log(`Uploading artifacts`);
         for (const artifact of artifacts) {
-            async function uploadAsset(fileName: string, options: { testRun?: boolean, projectName: string }) {
+            const uploadAsset = async (fileName: string, options: { testRun?: boolean, projectName: string }) => {
                 if (options.testRun) {
                     logger.log(`TEST RUN: Skipping upload of asset ${fileName}`);
                     return false;;
