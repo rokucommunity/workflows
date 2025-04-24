@@ -187,7 +187,7 @@ export class ReleaseCreator {
 
         logger.log(`Get artifacts from the build`)
         const artifacts = fastGlob.sync(options.artifactPaths, { absolute: false })
-        let duplicateArtifacts: string[];
+        let duplicateArtifacts: string[] = [];
 
         logger.log(`Uploading artifacts`);
         for (const artifact of artifacts) {
