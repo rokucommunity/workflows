@@ -12,7 +12,7 @@ import { ChangelogGenerator } from './ChangeLogGenerator';
 import { Project, ProjectManager } from './ProjectManager';
 import * as diffParse from 'parse-diff';
 
-type ReleaseType = 'major' | 'minor' | 'patch' | 'prerelease' | 'custom';
+type ReleaseType = 'major' | 'minor' | 'patch' | 'prerelease';
 
 /**
  * This class is responsible for managing the local git repository, GitHub PRs, and GitHub Releases
