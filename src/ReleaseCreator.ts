@@ -187,7 +187,7 @@ export class ReleaseCreator {
 
         logger.log(`Get artifacts from the build`)
         const artifacts = fastGlob.sync(options.artifactPaths, { absolute: false })
-        let downloadArtifactName: string;
+        let duplicateArtifacts: string[];
 
         logger.log(`Uploading artifacts`);
         for (const artifact of artifacts) {
@@ -218,10 +218,10 @@ export class ReleaseCreator {
             logger.inLog(`Uploading ${fileName}`);
             await uploadAsset(fileName, options);
 
-            const newFileName = this.appendDateToArtifactName(fileName);
+            const duplicateFileName = this.appendDateToArtifactName(fileName);
             logger.inLog(`Uploading duplicate ${fileName}`);
-            await uploadAsset(newFileName, options);
-
+            await uploadAsset(duplicateFileName, options);
+            duplicateArtifacts.push(duplicateFileName);
         }
 
         logger.log(`Get the pull request for release ${releaseVersion}`);
@@ -276,15 +276,15 @@ export class ReleaseCreator {
 
         const prevReleaseVersion = ProjectManager.getPreviousVersion(releaseVersion, project.dir);
         const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
-        const tempArtifact = this.getArtifactNameWithCurrentDate(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
+        const duplicateArtifactName = this.getArtifactName(duplicateArtifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         logger.log(`Artifact name: ${artifactName}`);
         let npm = undefined
         const tag = draftRelease.html_url.split('/').pop();
-        const tempDownloadLink = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${tempArtifact}`;
+        const duplicateDownloadLink = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${duplicateArtifactName}`;
         const npmCommand = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName}`;
         if (path.extname(artifactName) === '.tgz') {
             npm = {};
-            npm['downloadLink'] = tempDownloadLink;
+            npm['downloadLink'] = duplicateDownloadLink;
             npm['sha'] = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
             npm['command'] = `\`\`\`bash\nnpm install ${npmCommand}\n\`\`\``;
         }
@@ -642,12 +642,6 @@ export class ReleaseCreator {
             }
         }
         return findArtifact() ?? assetNameHint; //if nothing is found, return the name hint
-    }
-
-    private getArtifactNameWithCurrentDate(artifacts: string[], assetNameHint: string) {
-        const date = new Date().toISOString().split('T')[0];
-        let name = this.getArtifactName(artifacts, assetNameHint);
-        return this.appendDateToArtifactName(name);
     }
 
     private appendDateToArtifactName(artifactName: string) {
