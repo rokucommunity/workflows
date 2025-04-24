@@ -187,31 +187,41 @@ export class ReleaseCreator {
 
         logger.log(`Get artifacts from the build`)
         const artifacts = fastGlob.sync(options.artifactPaths, { absolute: false })
+        let downloadArtifactName: string;
 
         logger.log(`Uploading artifacts`);
         for (const artifact of artifacts) {
+            async function uploadAsset(fileName: string, options: { testRun?: boolean, projectName: string }) {
+                if (options.testRun) {
+                    logger.log(`TEST RUN: Skipping upload of asset ${fileName}`);
+                    return false;;
+                }
+                let uploadResponse = await this.octokit.repos.uploadReleaseAsset({
+                    owner: this.ORG,
+                    repo: options.projectName,
+                    release_id: draftRelease.id,
+                    name: fileName,
+                    data: (fsExtra.readFileSync(artifact) as unknown as string),
+                    headers: {
+                        'content-type': 'application/octet-stream',
+                        'content-length': fsExtra.statSync(artifact).size
+                    }
+                });
+                if (uploadResponse.status === 201) {
+                    logger.inLog(`Uploaded asset ${fileName}`);
+                } else {
+                    logger.inLog(`Failed to upload asset ${fileName}`);
+                }
+                return true;
+            }
             const fileName = artifact.split('/').pop();
             logger.inLog(`Uploading ${fileName}`);
-            if (options.testRun) {
-                logger.log(`TEST RUN: Skipping upload of asset ${fileName}`);
-                continue;
-            }
-            const uploadResponse = await this.octokit.repos.uploadReleaseAsset({
-                owner: this.ORG,
-                repo: options.projectName,
-                release_id: draftRelease.id,
-                name: fileName,
-                data: (fsExtra.readFileSync(artifact) as unknown as string),
-                headers: {
-                    'content-type': 'application/octet-stream',
-                    'content-length': fsExtra.statSync(artifact).size
-                }
-            });
-            if (uploadResponse.status === 201) {
-                logger.inLog(`Uploaded asset ${fileName}`);
-            } else {
-                logger.inLog(`Failed to upload asset ${fileName}`);
-            }
+            await uploadAsset(fileName, options);
+
+            const newFileName = this.appendDateToArtifactName(fileName);
+            logger.inLog(`Uploading duplicate ${fileName}`);
+            await uploadAsset(newFileName, options);
+
         }
 
         logger.log(`Get the pull request for release ${releaseVersion}`);
@@ -265,7 +275,7 @@ export class ReleaseCreator {
         draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
 
         const prevReleaseVersion = ProjectManager.getPreviousVersion(releaseVersion, project.dir);
-        const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
+        const artifactName = this.getArtifactNameWithCurrentDate(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         logger.log(`Artifact name: ${artifactName}`);
         let npm = undefined
         if (path.extname(artifactName) === '.tgz') {
@@ -346,6 +356,7 @@ export class ReleaseCreator {
             return result;
         });
 
+        const regex = new RegExp(`-temp-build-\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}Z`);
         for (const asset of assets) {
             logger.inLog(`Release asset: ${asset.name}`);
             const assetResponse = await this.octokit.repos.getReleaseAsset({
@@ -357,9 +368,19 @@ export class ReleaseCreator {
                 }
             });
 
+            if (regex.test(asset.name)) {
+                logger.inLog(`Deleting temporary asset ${asset.name}`);
+                await this.octokit.repos.deleteReleaseAsset({
+                    owner: this.ORG,
+                    repo: options.projectName,
+                    asset_id: asset.id
+                });
+                continue;
+            }
             const buffer = Buffer.from(new Uint8Array(assetResponse.data as any));
             await fsExtra.writeFileSync(s`${project.dir}/${asset.name}`, buffer);
         }
+        assets = assets.filter(a => !regex.test(a.name));
 
         const artifactName = this.getArtifactName(assets.map(a => a.name), this.getAssetName(project.dir, path.extname(assets[0].name)));
 
@@ -618,6 +639,17 @@ export class ReleaseCreator {
             }
         }
         return findArtifact() ?? assetNameHint; //if nothing is found, return the name hint
+    }
+
+    private getArtifactNameWithCurrentDate(artifacts: string[], assetNameHint: string) {
+        const date = new Date().toISOString().split('T')[0];
+        let name = this.getArtifactName(artifacts, assetNameHint);
+        return this.appendDateToArtifactName(name);
+    }
+
+    private appendDateToArtifactName(artifactName: string) {
+        const date = new Date().toISOString().split('T')[0];
+        return artifactName.replace(/(\.[^.]+)$/, `-temp-build-${date}$1`);
     }
 
 }
