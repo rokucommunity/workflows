@@ -359,7 +359,7 @@ export class ReleaseCreator {
             return result;
         });
 
-        const regex = /-temp-build-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/;
+        const regex = /-temp-build-\d{4}-\d{2}-\d{2}T\d{2}\.\d{2}\.\d{2}\.\d{3}Z/;
         for (const asset of assets) {
             logger.inLog(`Release asset: ${asset.name}`);
             const assetResponse = await this.octokit.repos.getReleaseAsset({
