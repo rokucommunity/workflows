@@ -294,7 +294,8 @@ export class ReleaseCreator {
             releaseVersion: releaseVersion,
             prevReleaseVersion: prevReleaseVersion,
             isDraft: true,
-            npm: npm
+            npm: npm,
+            prNumber: pullRequest.number,
         });
         logger.log(`Update the pull request with the release link and edit changelog link`);
         await this.octokit.rest.pulls.update({
@@ -596,10 +597,14 @@ export class ReleaseCreator {
             sha: string,
             downloadLink: string,
             command: string
-        }
+        },
+        prNumber?: number
     }) {
         if (options.isDraft) {
-            const editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${options.releaseVersion}/CHANGELOG.md`;
+            let editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${options.releaseVersion}/CHANGELOG.md`;
+            if (options.prNumber) {
+                editChangeLogLink += `?pr=/${this.ORG}/${options.projectName}/pull/${options.prNumber}`;
+            }
             const whatsChangeLink = `https://github.com/${this.ORG}/${options.projectName}/compare/v${options.prevReleaseVersion}...release/${options.releaseVersion}`
             return [
                 `This PR creates the \`v${options.releaseVersion}\` release of \`${options.projectName}\`. Here are some useful links:\n`,
