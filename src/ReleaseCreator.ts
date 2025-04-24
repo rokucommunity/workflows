@@ -651,7 +651,7 @@ export class ReleaseCreator {
     }
 
     private appendDateToArtifactName(artifactName: string) {
-        const date = new Date().toISOString().split('T')[0];
+        const date = new Date().toISOString();
         return artifactName.replace(/(\.[^.]+)$/, `-temp-build-${date}$1`);
     }
 
