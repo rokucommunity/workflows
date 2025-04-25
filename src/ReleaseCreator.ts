@@ -5,12 +5,12 @@ import * as dotenv from 'dotenv';
 import * as fastGlob from 'fast-glob';
 import fetch from 'node-fetch';
 import { standardizePath as s } from 'brighterscript';
-import { option } from 'yargs';
 import { logger, utils } from './utils';
 import { Octokit } from '@octokit/rest';
 import { ChangelogGenerator } from './ChangeLogGenerator';
-import { Project, ProjectManager } from './ProjectManager';
-import * as diffParse from 'parse-diff';
+import { ProjectManager } from './ProjectManager';
+import diffParse from 'parse-diff';
+
 
 type ReleaseType = 'major' | 'minor' | 'patch' | 'prerelease';
 
@@ -32,17 +32,17 @@ export class ReleaseCreator {
     }
 
     /**
-     * This method initializes a release by creating a new branch, 
+     * This method initializes a release by creating a new branch,
      * updating the changelog and version, creating a release pull request
      * and creating a GitHub release
      */
     public async initializeRelease(options: {
-        projectName: string,
-        releaseType: ReleaseType | string,
-        branch: string,
-        installDependencies: boolean,
-        customVersion: string,
-        testRun?: boolean
+        projectName: string;
+        releaseType: ReleaseType;
+        branch: string;
+        installDependencies: boolean;
+        customVersion: string;
+        testRun?: boolean;
     }) {
         logger.log(`Intialize release... releaseType: ${options.releaseType}, branch: ${options.branch}`);
         logger.increaseIndent();
@@ -78,15 +78,17 @@ export class ReleaseCreator {
             utils.throwError(`Cannot create release branch release/${releaseVersion}`, options);
         }
 
-        await ProjectManager.installDependencies(project, options.installDependencies);
+        ProjectManager.installDependencies(project, options.installDependencies);
 
         logger.log(`Update the changelog`);
-        await new ChangelogGenerator().updateChangeLog({
-            projectName: options.projectName,
-            releaseVersion: releaseVersion
-        }).catch(e => {
+        try {
+            new ChangelogGenerator().updateChangeLog({
+                projectName: options.projectName,
+                releaseVersion: releaseVersion
+            });
+        } catch (e) {
             throw new Error(`Failed to update changelog: ${e}`);
-        });
+        }
 
         if (options.testRun) {
             logger.log(`TEST RUN: Skip commit and push`);
@@ -116,7 +118,7 @@ export class ReleaseCreator {
         const prevReleaseVersion = ProjectManager.getPreviousVersion(releaseVersion, project.dir);
         //Creating the pull request will trigger another workflow, so it should be the last step of this flow
         logger.log(`Create pull request in ${options.projectName}: release/${releaseVersion} -> ${options.branch}`);
-        const createResponse = await this.octokit.rest.pulls.create({
+        await this.octokit.rest.pulls.create({
             owner: this.ORG,
             repo: options.projectName,
             title: releaseVersion,
@@ -133,11 +135,11 @@ export class ReleaseCreator {
      * Replaces the release artifacts to the GitHub release
      * and add the changelog patch to the release notes
      */
-    public async makeReleaseArtifacts(options: { branch: string; projectName: string; artifactPaths: string, testRun?: boolean }) {
+    public async makeReleaseArtifacts(options: { branch: string; projectName: string; artifactPaths: string; testRun?: boolean }) {
         logger.log(`Upload release... artifactPaths: ${options.artifactPaths}`);
         logger.increaseIndent();
 
-        //TODO this needs another look. We get the artifacts from the previous step and upload them. 
+        //TODO this needs another look. We get the artifacts from the previous step and upload them.
         //The only thing that uses the diretory is getting the version which reads the package.json
         //I can't assume that I'm running in the repo I care about though so this might be necessary
         const project = await ProjectManager.initialize({ ...options, installDependencies: false });
@@ -162,7 +164,7 @@ export class ReleaseCreator {
             let result = this.octokit.repos.listReleaseAssets({
                 owner: this.ORG,
                 repo: options.projectName,
-                release_id: draftRelease.id,
+                release_id: draftRelease.id
             });
             return result;
         });
@@ -185,16 +187,17 @@ export class ReleaseCreator {
             }
         }
 
-        logger.log(`Get artifacts from the build`)
-        const artifacts = fastGlob.sync(options.artifactPaths, { absolute: false })
+        logger.log(`Get artifacts from the build`);
+        const artifacts = fastGlob.sync(options.artifactPaths, { absolute: false });
         let duplicateArtifacts: string[] = [];
 
         logger.log(`Uploading artifacts`);
         for (const artifact of artifacts) {
-            const uploadAsset = async (fileName: string, options: { testRun?: boolean, projectName: string }) => {
+            // eslint-disable-next-line @typescript-eslint/no-loop-func
+            const uploadAsset = async (fileName: string, options: { testRun?: boolean; projectName: string }) => {
                 if (options.testRun) {
                     logger.log(`TEST RUN: Skipping upload of asset ${fileName}`);
-                    return false;;
+                    return false;
                 }
                 let uploadResponse = await this.octokit.repos.uploadReleaseAsset({
                     owner: this.ORG,
@@ -213,7 +216,7 @@ export class ReleaseCreator {
                     logger.inLog(`Failed to upload asset ${fileName}`);
                 }
                 return true;
-            }
+            };
             const fileName = artifact.split('/').pop();
             logger.inLog(`Uploading ${fileName}`);
             await uploadAsset(fileName, options);
@@ -237,7 +240,7 @@ export class ReleaseCreator {
         let lines = [];
         const changelogFile = files.find(f => f.filename === 'CHANGELOG.md');
         if (changelogFile) {
-            const parsedPatch = diffParse.default(changelogFile.patch);
+            const parsedPatch = diffParse(changelogFile.patch);
 
             parsedPatch?.at(0)?.chunks.forEach(chunk => {
                 chunk.changes.forEach(change => {
@@ -278,15 +281,15 @@ export class ReleaseCreator {
         const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         const duplicateArtifactName = this.getArtifactName(duplicateArtifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         logger.log(`Artifact name: ${artifactName}`);
-        let npm = undefined
+        let npm;
         const tag = draftRelease.html_url.split('/').pop();
         const duplicateDownloadLink = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${duplicateArtifactName}`;
         const npmCommand = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName}`;
         if (path.extname(artifactName) === '.tgz') {
             npm = {};
-            npm['downloadLink'] = duplicateDownloadLink;
-            npm['sha'] = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
-            npm['command'] = `\`\`\`bash\nnpm install ${npmCommand}\n\`\`\``;
+            npm.downloadLink = duplicateDownloadLink;
+            npm.sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
+            npm.command = `\`\`\`bash\nnpm install ${npmCommand}\n\`\`\``;
         }
         let body = this.makePullRequestBody({
             ...options,
@@ -295,7 +298,7 @@ export class ReleaseCreator {
             prevReleaseVersion: prevReleaseVersion,
             isDraft: true,
             npm: npm,
-            prNumber: pullRequest.number,
+            prNumber: pullRequest.number
         });
         logger.log(`Update the pull request with the release link and edit changelog link`);
         await this.octokit.rest.pulls.update({
@@ -309,10 +312,10 @@ export class ReleaseCreator {
     }
 
     /**
-     * Marks the GitHub release as published 
+     * Marks the GitHub release as published
      * and releases the artifacts to the correct store
      */
-    public async publishRelease(options: { projectName: string, ref: string, releaseType: string }) {
+    public async publishRelease(options: { projectName: string; ref: string; releaseType: string }) {
         logger.log(`publish release...branch: ${options.ref}, releaseType: ${options.releaseType}`);
         logger.increaseIndent();
 
@@ -355,7 +358,7 @@ export class ReleaseCreator {
             let result = this.octokit.repos.listReleaseAssets({
                 owner: this.ORG,
                 repo: options.projectName,
-                release_id: draftRelease.id,
+                release_id: draftRelease.id
             });
             return result;
         });
@@ -382,7 +385,7 @@ export class ReleaseCreator {
                 continue;
             }
             const buffer = Buffer.from(new Uint8Array(assetResponse.data as any));
-            await fsExtra.writeFileSync(s`${project.dir}/${asset.name}`, buffer);
+            fsExtra.writeFileSync(s`${project.dir}/${asset.name}`, buffer);
         }
         assets = assets.filter(a => !regex.test(a.name));
 
@@ -444,12 +447,12 @@ export class ReleaseCreator {
                 releaseVersion: releaseVersion,
                 prevReleaseVersion: prevReleaseVersion,
                 isDraft: false
-            }),
+            })
         });
         logger.decreaseIndent();
     }
 
-    public async deleteRelease(options: { projectName: string, releaseVersion: string }) {
+    public async deleteRelease(options: { projectName: string; releaseVersion: string }) {
         logger.log(`Delete release...version: ${options.releaseVersion}`);
         logger.increaseIndent();
 
@@ -544,7 +547,7 @@ export class ReleaseCreator {
     private getVscePackageName(dir: string) {
         const packageJson = fsExtra.readJsonSync(path.join(dir, 'package.json'));
         const publisher = packageJson.publisher ? `${packageJson.publisher}.` : '';
-        return `${publisher}${packageJson.name}`
+        return `${publisher}${packageJson.name}`;
     }
 
 
@@ -571,14 +574,6 @@ export class ReleaseCreator {
         return pullRequests.data.filter(pr => pr.head.ref === `release/${releaseVersion}`)[0];
     }
 
-    private getRepositoryName() {
-        // This is neccessary because this code is intended to run in different repositories
-        const repoPath = utils.executeCommandWithOutput(`git rev-parse --show-toplevel`).trim();
-        const repoName = require("path").basename(repoPath);
-        logger.log(`Repository name: ${repoName}`);
-        return repoName;
-    }
-
     private getAssetName(dir: string, extension: string) {
         extension = path.extname(extension);
         const packageJson = fsExtra.readJsonSync(path.join(dir, 'package.json'));
@@ -588,24 +583,24 @@ export class ReleaseCreator {
     }
 
     private makePullRequestBody(options: {
-        githubReleaseLink?: string,
-        projectName: string,
-        releaseVersion?: string,
-        prevReleaseVersion?: string,
-        isDraft: boolean,
+        githubReleaseLink?: string;
+        projectName: string;
+        releaseVersion?: string;
+        prevReleaseVersion?: string;
+        isDraft: boolean;
         npm?: {
-            sha: string,
-            downloadLink: string,
-            command: string
-        },
-        prNumber?: number
+            sha: string;
+            downloadLink: string;
+            command: string;
+        };
+        prNumber?: number;
     }) {
         if (options.isDraft) {
             let editChangeLogLink = `https://github.com/${this.ORG}/${options.projectName}/edit/release/${options.releaseVersion}/CHANGELOG.md`;
             if (options.prNumber) {
                 editChangeLogLink += `?pr=/${this.ORG}/${options.projectName}/pull/${options.prNumber}`;
             }
-            const whatsChangeLink = `https://github.com/${this.ORG}/${options.projectName}/compare/v${options.prevReleaseVersion}...release/${options.releaseVersion}`
+            const whatsChangeLink = `https://github.com/${this.ORG}/${options.projectName}/compare/v${options.prevReleaseVersion}...release/${options.releaseVersion}`;
             return [
                 `This PR creates the \`v${options.releaseVersion}\` release of \`${options.projectName}\`. Here are some useful links:\n`,
                 `${options.githubReleaseLink ? `- [GitHub Draft Release](${options.githubReleaseLink})\n` : ''}`,
@@ -615,7 +610,7 @@ export class ReleaseCreator {
             ].join('');
         } else {
             const changeLogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/v${options.releaseVersion}/CHANGELOG.md`;
-            const whatsChangeLink = `https://github.com/${this.ORG}/${options.projectName}/compare/v${options.prevReleaseVersion}...v${options.releaseVersion}`
+            const whatsChangeLink = `https://github.com/${this.ORG}/${options.projectName}/compare/v${options.prevReleaseVersion}...v${options.releaseVersion}`;
             return [
                 `This PR creates the \`v${options.releaseVersion}\` release of \`${options.projectName}\`. Here are some useful links:\n`,
                 `- [GitHub Release](${options.githubReleaseLink})\n`,

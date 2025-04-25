@@ -6,27 +6,25 @@
 import * as fsExtra from 'fs-extra';
 import { standardizePath as s } from 'brighterscript';
 import * as semver from 'semver';
-import fetch from 'node-fetch';
 import { logger, utils } from './utils';
-import { Octokit } from '@octokit/rest';
-import { Commit, Project, ProjectManager } from './ProjectManager';
+import type { Commit, Project } from './ProjectManager';
+import { ProjectManager } from './ProjectManager';
 
 export class ChangelogGenerator {
-    private tempDir = s`${__dirname}/../.tmp/.releases`;
 
     static MARKER = 'this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).';
     static HEADER = `# Changelog
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).`
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).`;
 
-    public async updateChangeLog(options: { projectName: string, releaseVersion: string }) {
+    public updateChangeLog(options: { projectName: string; releaseVersion: string }) {
         logger.log(`Updating changelog for project ${options.projectName}`);
         logger.increaseIndent();
 
         //The projects are already setup in the releaseCreator class
-        const project = await ProjectManager.getProject(options.projectName);
+        const project = ProjectManager.getProject(options.projectName);
 
         logger.log(`Last release was ${project.lastTag}`);
 
@@ -39,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         }
 
         const lines = this.getChangeLogs(project, options.releaseVersion);
-        logger.log(lines)
+        logger.log(lines);
 
         //assume the project running this command is the project being updated
         const changelogPath = s`${project.dir}/CHANGELOG.md`;
@@ -165,19 +163,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             .filter(x => !x.message.toLowerCase().startsWith('update changelog for '));
 
         return commitMessages;
-    }
-
-    private cloneProject(project: Project) {
-        const repoName = project.name.split('/').pop();
-
-        let url = project.repositoryUrl;
-        if (!url) {
-            url = `https://github.com/rokucommunity/${repoName}`;
-        }
-
-        logger.log(`Cloning ${url}`);
-        project.dir = s`${this.tempDir}/${repoName}`;
-
-        utils.executeCommand(`git clone --no-single-branch "${url}" "${project.dir}"`);
     }
 }
