@@ -8,14 +8,11 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        nodeVersion: ["14.18.1", "16.20.2", "18.18.2"]
     steps:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
         with:
-          node-version: ${{ matrix.nodeVersion }}
+          node-version: '18.18.2'
       - run: npm ci
       - run: npm run build
       - run: npm run test

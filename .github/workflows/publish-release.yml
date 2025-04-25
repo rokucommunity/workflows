@@ -31,7 +31,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@master
         with:
-          node-version: "18.18.2"
+          node-version: '18.18.2'
 
       - name: Run npm ci
         run: npm ci
@@ -43,7 +43,7 @@ jobs:
           else
             echo "RUNNER_DEBUG=false" >> $GITHUB_ENV
           fi
-    
+
       - name: Run publish
         env:
           GH_TOKEN: ${{ github.token }}
