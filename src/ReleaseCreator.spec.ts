@@ -17,13 +17,13 @@ describe('Test ReleaseCreator.ts', () => {
         sinon.restore();
     });
 
-    it('Successfully gets the previous release version', async () => {
+    it('Successfully gets the previous release version', () => {
         let tags = [
             'v1.0.0',
             'v0.9.0',
-            'v0.8.0',
-        ]
-        const mockGitTag = sinon.stub(utils, 'executeCommandWithOutput').callsFake((cmd: string, dir: string) => {
+            'v0.8.0'
+        ];
+        sinon.stub(utils, 'executeCommandWithOutput').callsFake((cmd: string, dir: string) => {
             if (cmd === `git tag --merged HEAD`) {
                 return tags.join('\n');
             } else {
@@ -36,8 +36,8 @@ describe('Test ReleaseCreator.ts', () => {
         expect(releaseCreator['getPreviousVersion']('0.1.0', '')).to.equal(undefined);
     });
 
-    it('Successfully gets the previous release version with prerelease', async () => {
-        const mockGitTag = sinon.stub(utils, 'executeCommandWithOutput').callsFake((cmd: string, dir: string) => {
+    it('Successfully gets the previous release version with prerelease', () => {
+        sinon.stub(utils, 'executeCommandWithOutput').callsFake((cmd: string, dir: string) => {
             if (cmd === `git tag --merged HEAD`) {
                 return tags.join('\n');
             } else {
@@ -47,15 +47,15 @@ describe('Test ReleaseCreator.ts', () => {
         let tags = [
             'v0.9.9',
             'v0.9.0',
-            'v0.8.0',
-        ]
+            'v0.8.0'
+        ];
         expect(releaseCreator['getPreviousVersion']('1.0.0-alpha.0', '')).to.equal('0.9.9');
         tags = [
             'v1.0.0-alpha.0',
             'v1.0.0',
             'v0.9.0',
-            'v0.8.0',
-        ]
+            'v0.8.0'
+        ];
         expect(releaseCreator['getPreviousVersion']('1.0.0-alpha.1', '')).to.equal('1.0.0-alpha.0');
         tags = [
             'v0.9.2',
@@ -63,8 +63,8 @@ describe('Test ReleaseCreator.ts', () => {
             'v0.9.0',
             'v1.0.0-alpha.0',
             'v0.9.0',
-            'v0.8.0',
-        ]
+            'v0.8.0'
+        ];
         expect(releaseCreator['getPreviousVersion']('1.0.0-alpha.1', '')).to.equal('1.0.0-alpha.0');
     });
 });

@@ -10,6 +10,7 @@
         ],
         "sourceMap": true,
         "downlevelIteration": true,
+        "noUnusedLocals": true,
         "incremental": true,
         "resolveJsonModule": true,
         "skipLibCheck": true,

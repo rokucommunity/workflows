@@ -6,8 +6,8 @@ import { logger, utils } from './utils';
 import { Octokit } from '@octokit/rest';
 
 /**
- * ProjectManager 
- * 
+ * ProjectManager
+ *
  * This class is a signleton class that manages the projects in the organization.
  * It will create a .tmp directory to store the cloned repositories.
  * It will store the map of projects, getters for project objects
@@ -19,7 +19,7 @@ export class ProjectManager {
 
     private projects: Project[] = [];
 
-    public static async initialize(options: { projectName: string, installDependencies: boolean }) {
+    public static async initialize(options: { projectName: string; installDependencies: boolean }) {
         const instance = ProjectManager.getInstance();
         if (instance.projects.length > 0) {
             logger.log('Projects have already been setup. Skipping');
@@ -51,12 +51,12 @@ export class ProjectManager {
         return project;
     }
 
-    public static async installDependencies(project: Project, installDependencies: boolean) {
+    public static installDependencies(project: Project, installDependencies: boolean) {
         project.lastTag = ProjectManager.getPreviousVersion(
-            fsExtra.readJsonSync(s`${project.dir}/package.json`).version,
+            fsExtra.readJsonSync(s`${project.dir}/package.json`).version as string,
             project.dir
         );
-        let latestReleaseVersion;
+        let latestReleaseVersion: string;
         if (!project.lastTag) {
             logger.log('Not tags were found. Set the lastTag to the first commit hash');
             project.lastTag = utils.executeCommandWithOutput('git rev-list --max-parents=0 HEAD', { cwd: project.dir }).toString().trim();
@@ -68,7 +68,7 @@ export class ProjectManager {
     }
 
     public static getProject(projectName: string) {
-        return ProjectManager.getInstance().projects.find(x => x.name === projectName)!;
+        return ProjectManager.getInstance().projects.find(x => x.name === projectName);
     }
 
     private static getInstance() {
@@ -90,7 +90,7 @@ export class ProjectManager {
             return octokit.repos.listForOrg({
                 org: 'rokucommunity',
                 type: 'public',
-                per_page: utils.OCTOKIT_PER_PAGE,
+                per_page: utils.OCTOKIT_PER_PAGE
             });
         });
         let projectNpmNames = [];
@@ -103,7 +103,7 @@ export class ProjectManager {
                 request: { timeout: 10000 }
             });
             // Decode Base64 content
-            const content = Buffer.from((response.data as any).content, "base64").toString("utf-8");
+            const content = Buffer.from((response.data as any).content as string, 'base64').toString('utf-8');
             // Parse the cleaned string into a JSON object
             const jsonObject = JSON.parse(content);
             projectNpmNames.push({ repoName: x.name, packageName: jsonObject.name });
@@ -163,8 +163,8 @@ export class ProjectManager {
             return '';
         }
         const packageJson = JSON.parse(output);
-        const version = packageJson?.[dependencyType][packageName];
-        return /\d+\.\d+\.\d+/.exec(version)?.[0] as string;
+        const version = packageJson?.[dependencyType]?.[packageName] as string;
+        return /\d+\.\d+\.\d+/.exec(version ?? '')?.[0] as string;
     }
 
     public static innerInstallDependencies(project: Project, latestReleaseVersion: string, installDependencies: boolean) {
@@ -184,7 +184,7 @@ export class ProjectManager {
 
                     dependency.newVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
 
-                    const fileChanges = utils.executeCommandWithOutput(`git status --porcelain`, { cwd: project.dir })
+                    utils.executeCommandWithOutput(`git status --porcelain`, { cwd: project.dir })
                         .split(/\r?\n/)
                         .map(x => x.split(' ')[1]);
 
