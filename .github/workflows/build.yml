@@ -1,0 +1,20 @@
+name: build
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        nodeVersion: ["14.18.1", "16.20.2", "18.18.2"]
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-node@master
+        with:
+          node-version: ${{ matrix.nodeVersion }}
+      - run: npm ci
+      - run: npm run build

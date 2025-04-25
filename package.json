@@ -4,12 +4,13 @@
   "description": "Host the RokuCommunity Workflows",
   "main": "index.js",
   "scripts": {
+    "build": "tsc",
     "package": "echo \"Hello World!\" > hello.tgz",
     "test": "npx mocha --import=tsx --recursive \"./src/**/*.spec.ts\""
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "@octokit/rest": "^20.1.1",
     "brighterscript": "^0.69.0",
