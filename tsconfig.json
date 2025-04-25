@@ -1,26 +1,31 @@
 {
-    "compilerOptions": {
-        "outDir": "./dist",
-        "allowJs": false,
-        "module": "commonjs",
-        "target": "es2018",
-        "lib": [
-            "esnext",
-            "dom"
-        ],
-        "sourceMap": true,
-        "downlevelIteration": true,
-        "noUnusedLocals": true,
-        "incremental": true,
-        "resolveJsonModule": true,
-        "skipLibCheck": true,
-        "esModuleInterop": true,
-        "allowSyntheticDefaultImports": true
-    },
-    "include": [
-        "src/**/*.ts"
-    ],
-    "ts-node": {
-        "transpileOnly": false
-    }
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2018",
+    "noImplicitAny": false,
+    "removeComments": false,
+    "noUnusedLocals": false,
+    "noImplicitThis": true,
+    "inlineSourceMap": false,
+    "skipLibCheck": true,
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "preserveConstEnums": true,
+    "strictNullChecks": false,
+    "noUnusedParameters": false,
+    "strictBindCallApply": true,
+    "lib": [
+        "es2017",
+        "es2019.array",
+        "dom"
+    ]
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "ts-node": {
+      "transpileOnly": true
+  }
 }

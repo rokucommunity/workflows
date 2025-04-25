@@ -240,7 +240,7 @@ export class ReleaseCreator {
         let lines = [];
         const changelogFile = files.find(f => f.filename === 'CHANGELOG.md');
         if (changelogFile) {
-            const parsedPatch = diffParse.default(changelogFile.patch);
+            const parsedPatch = diffParse(changelogFile.patch);
 
             parsedPatch?.at(0)?.chunks.forEach(chunk => {
                 chunk.changes.forEach(change => {
@@ -385,7 +385,7 @@ export class ReleaseCreator {
                 continue;
             }
             const buffer = Buffer.from(new Uint8Array(assetResponse.data as any));
-            await fsExtra.writeFileSync(s`${project.dir}/${asset.name}`, buffer);
+            fsExtra.writeFileSync(s`${project.dir}/${asset.name}`, buffer);
         }
         assets = assets.filter(a => !regex.test(a.name));
 

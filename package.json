@@ -1,20 +1,25 @@
 {
-  "name": "github",
+  "name": "workflows",
   "version": "1.0.0",
-  "description": "Host the RokuCommunity Workflows",
-  "main": "index.js",
+  "description": "The RokuCommunity Workflows",
   "scripts": {
-    "preversion": "npm run build && npm run lint",
-    "build": "tsc",
+    "preversion": "npm run build && npm run lint && npm run test",
+    "build": "rimraf dist && tsc",
     "lint": "eslint \"src/**\"",
-    "package": "echo \"Hello World!\" > hello.tgz",
-    "test": "npx mocha --import=tsx --recursive \"./src/**/*.spec.ts\""
+    "watch": "tsc --watch",
+    "test": "nyc mocha \"src/**/*spec.ts\"",
+    "test:nocover": "mocha \"src/**/*.spec.ts\"",
+    "package": "npm run build && npm pack"
   },
-  "keywords": [],
-  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rokucommunity/workflows"
+  },
+  "author": "RokuCommunity",
   "license": "MIT",
   "dependencies": {
     "@octokit/rest": "^20.1.1",
+    "@vscode/vsce": "^2.22.0",
     "brighterscript": "^0.69.0",
     "dotenv": "^16.4.7",
     "fast-glob": "^3.3.3",
@@ -22,25 +27,73 @@
     "node-fetch": "^2.7.0",
     "parse-diff": "^0.11.1",
     "semver": "^7.6.3",
-    "yargs": "^17.7.2"
+    "yargs": "^17.7.2",
+    "ovsx": "^0.8.3",
+    "tsx": "^4.19.3"
   },
   "devDependencies": {
-    "@types/chai": "^5.2.1",
-    "@types/mocha": "^10.0.10",
-    "@types/sinon": "^17.0.4",
+    "@types/chai": "^4.2.22",
+    "@types/dateformat": "~3",
+    "@types/debounce": "^1.2.1",
+    "@types/decompress": "^4.2.4",
+    "@types/dedent": "^0.7.0",
+    "@types/find-in-files": "^0.5.1",
+    "@types/fs-extra": "^9.0.13",
+    "@types/glob": "^7.2.0",
+    "@types/mocha": "^9.0.0",
+    "@types/node": "^16.18.126",
+    "@types/request": "^2.48.8",
+    "@types/semver": "^7.3.9",
+    "@types/sinon": "^10.0.6",
     "@types/yargs": "^15.0.5",
     "@typescript-eslint/eslint-plugin": "^5.27.0",
     "@typescript-eslint/parser": "^5.27.0",
-    "@vscode/vsce": "^2.22.0",
-    "chai": "^5.2.0",
+    "chai": "^4.3.4",
     "eslint": "^8.1.0",
     "eslint-plugin-no-only-tests": "^2.6.0",
     "mocha": "^11.1.0",
-    "nyc": "^17.1.0",
-    "ovsx": "^0.8.3",
-    "sinon": "^20.0.0",
-    "ts-node": "^10.9.2",
-    "tsx": "^4.19.3",
-    "typescript": "^5.6.2"
+    "nyc": "^15.1.0",
+    "rimraf": "^3.0.2",
+    "sinon": "^11.1.2",
+    "source-map-support": "^0.5.20",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.7.2"
+  },
+  "mocha": {
+    "require": [
+      "source-map-support/register",
+      "ts-node/register"
+    ],
+    "watchFiles": [
+      "src/**/*"
+    ],
+    "timeout": 2000,
+    "fullTrace": true,
+    "watchExtensions": [
+      "ts"
+    ]
+  },
+  "nyc": {
+    "include": [
+      "src/**/!(*.spec).ts"
+    ],
+    "extension": [
+      ".ts"
+    ],
+    "require": [
+      "ts-node/register",
+      "source-map-support/register"
+    ],
+    "reporter": [
+      "text-summary",
+      "html"
+    ],
+    "sourceMap": true,
+    "instrument": true,
+    "check-coverage": false,
+    "lines": 100,
+    "statements": 100,
+    "functions": 100,
+    "branches": 100
   }
 }

@@ -1,7 +1,7 @@
 node_modules
 dist
 out
-
 .tmp/
-
 .env
+coverage
+.nyc_output
