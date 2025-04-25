@@ -16,6 +16,11 @@
     "strictNullChecks": false,
     "noUnusedParameters": false,
     "strictBindCallApply": true,
+    "downlevelIteration": true,
+    "incremental": false,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "lib": [
         "es2017",
         "es2019.array",

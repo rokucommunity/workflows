@@ -9,7 +9,7 @@ import { logger, utils } from './utils';
 import { Octokit } from '@octokit/rest';
 import { ChangelogGenerator } from './ChangeLogGenerator';
 import { ProjectManager } from './ProjectManager';
-import * as diffParse from 'parse-diff';
+import diffParse from 'parse-diff';
 
 
 type ReleaseType = 'major' | 'minor' | 'patch' | 'prerelease';
