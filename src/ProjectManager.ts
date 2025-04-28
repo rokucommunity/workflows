@@ -107,7 +107,7 @@ export class ProjectManager {
             // Parse the cleaned string into a JSON object
             const jsonObject = JSON.parse(content);
             projectNpmNames.push({ repoName: x.name, packageName: jsonObject.name });
-            this.projects.push(new Project(x.name, jsonObject.name, x.html_url));
+            this.projects.push(new Project(x.name, jsonObject.name, x.html_url, jsonObject.version));
         });
         await Promise.allSettled(promises);
 
@@ -171,6 +171,11 @@ export class ProjectManager {
         logger.log('installing', project.dependencies.length, 'dependencies and', project.devDependencies.length, 'devDependencies');
 
         const install = (project: Project, dependencyType: 'dependencies' | 'devDependencies', flags?: string) => {
+            // preidBuildKey is used for the lockstep versioning
+            let preidBuildKey = '';
+            if (installDependencies && semver.prerelease(project.version)) {
+                preidBuildKey = project.version.split('-')[1];
+            }
             for (const dependency of project[dependencyType]) {
                 dependency.previousReleaseVersion = ProjectManager.getInstance().getDependencyVersionFromRelease(project, latestReleaseVersion, dependency.name, dependencyType);
                 if (!dependency.previousReleaseVersion) {
@@ -178,9 +183,20 @@ export class ProjectManager {
                     logger.log(`Dependency project dir: ${dependencyProject.dir}`);
                     dependency.previousReleaseVersion = utils.executeCommandWithOutput('git rev-list --max-parents=0 HEAD', { cwd: dependencyProject.dir });
                 }
-
                 if (installDependencies) {
-                    utils.executeCommand(`npm install ${dependency.name}@latest`, { cwd: project.dir });
+                    let installVersion = 'latest';
+                    if (preidBuildKey) {
+                        if (semver.prerelease(dependency.previousReleaseVersion) && dependency.previousReleaseVersion.endsWith(preidBuildKey)) {
+                            logger.log(`Dependency ${dependency.name} has a matching prerelease version. Checking if there is a matching "lockstep" version.`);
+                            const nextDepVersion = semver.inc(dependency.previousReleaseVersion, 'prerelease');
+                            if (utils.executeCommandSucceeds(`npm view ${dependency.name}@${nextDepVersion}`, { cwd: project.dir })) {
+                                logger.log(`Matching version found. Installing ${dependency.name}@${nextDepVersion}`);
+                                installVersion = nextDepVersion;
+                            }
+                        }
+                    }
+
+                    utils.executeCommand(`npm install ${dependency.name}@${installVersion}`, { cwd: project.dir });
 
                     dependency.newVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
 
@@ -224,10 +240,11 @@ export class ProjectManager {
 
 
 export class Project {
-    constructor(name: string, npmName?: string, repositoryUrl?: string) {
+    constructor(name: string, npmName: string, repositoryUrl: string, version: string) {
         this.name = name;
         this.npmName = npmName;
         this.repositoryUrl = repositoryUrl ?? `https://github.com/rokucommunity/${name}`;
+        this.version = version;
         this.dependencies = [];
         this.devDependencies = [];
         this.changes = [];
@@ -243,6 +260,7 @@ export class Project {
      * The directory where this project is cloned.
      */
     dir: string;
+    version: string;
     dependencies: Array<{
         name: string;
         repoName: string;
