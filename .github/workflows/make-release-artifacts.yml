@@ -22,7 +22,7 @@ on:
             default: "master"
 
 jobs:
-  create-release-artifacts:
+  make-release-artifacts:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout caller repo
@@ -66,7 +66,7 @@ jobs:
             echo "RUNNER_DEBUG=false" >> $GITHUB_ENV
           fi
 
-      - name: Run upload
+      - name: Run make artifacts
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

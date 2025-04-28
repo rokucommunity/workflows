@@ -58,7 +58,7 @@ jobs:
             echo "RUNNER_DEBUG=false" >> $GITHUB_ENV
           fi
 
-      - name: Create release
+      - name: Run initialize
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
           DEBUG_LOGGING: ${{ env.RUNNER_DEBUG }}
