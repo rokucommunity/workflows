@@ -60,7 +60,7 @@ export class ReleaseCreator {
         }
 
         logger.log(`Fetch all branches`);
-        if (!utils.executeCommandSucceeds(`git fetch origin`, { cwd: project.dir })) {
+        if (!utils.executeCommandSucceeds(`git fetch --all --tags`, { cwd: project.dir })) {
             utils.throwError(`Failed to fetch origin`, options);
         }
 
@@ -71,6 +71,17 @@ export class ReleaseCreator {
         logger.log(`Check if a GitHub release already exists for ${releaseVersion}`);
         if (releases.find(r => r.tag_name === releaseVersion)) {
             utils.throwError(`Release ${releaseVersion} already exists`, options);
+        }
+
+        logger.log(`Check if a tag already exists for ${releaseVersion}`);
+        if (utils.executeCommandWithOutput(`git tag --merged HEAD`, { cwd: project.dir }).toString().includes(`v${releaseVersion}`)) {
+            utils.throwError(`Tag v${releaseVersion} already exists`, options);
+        }
+
+        logger.log(`Check if a pull request already exists for ${releaseVersion}`);
+        const pullRequest = await this.getPullRequest(options.projectName, releaseVersion);
+        if (pullRequest) {
+            utils.throwError(`Pull request ${pullRequest.number} already exists`, options);
         }
 
         logger.log(`Create new release branch release/${releaseVersion}`);
