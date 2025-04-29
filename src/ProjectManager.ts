@@ -107,7 +107,7 @@ export class ProjectManager {
             // Parse the cleaned string into a JSON object
             const jsonObject = JSON.parse(content);
             projectNpmNames.push({ repoName: x.name, packageName: jsonObject.name });
-            this.projects.push(new Project(x.name, jsonObject.name, x.html_url, jsonObject.version));
+            this.projects.push(new Project(x.name, jsonObject.name, x.html_url));
         });
         await Promise.allSettled(promises);
 
@@ -162,20 +162,19 @@ export class ProjectManager {
         if (!output) {
             return '';
         }
-        const packageJson = JSON.parse(output);
-        const version = packageJson?.[dependencyType]?.[packageName] as string;
-        return /\d+\.\d+\.\d+/.exec(version ?? '')?.[0] as string;
+        return JSON.parse(output)?.[dependencyType]?.[packageName].replace(/^[\^~]/, '') ?? '';
     }
 
     public static innerInstallDependencies(project: Project, latestReleaseVersion: string, installDependencies: boolean) {
         logger.log('installing', project.dependencies.length, 'dependencies and', project.devDependencies.length, 'devDependencies');
+        // preidBuildKey is used for the lockstep versioning
+        let preidBuildKey = '';
+
+        if (installDependencies && semver.prerelease(project.version)) {
+            preidBuildKey = project.version.split('-')[1];
+        }
 
         const install = (project: Project, dependencyType: 'dependencies' | 'devDependencies', flags?: string) => {
-            // preidBuildKey is used for the lockstep versioning
-            let preidBuildKey = '';
-            if (installDependencies && semver.prerelease(project.version)) {
-                preidBuildKey = project.version.split('-')[1];
-            }
             for (const dependency of project[dependencyType]) {
                 dependency.previousReleaseVersion = ProjectManager.getInstance().getDependencyVersionFromRelease(project, latestReleaseVersion, dependency.name, dependencyType);
                 if (!dependency.previousReleaseVersion) {
@@ -240,11 +239,11 @@ export class ProjectManager {
 
 
 export class Project {
-    constructor(name: string, npmName: string, repositoryUrl: string, version: string) {
+    constructor(name: string, npmName: string, repositoryUrl: string) {
         this.name = name;
         this.npmName = npmName;
         this.repositoryUrl = repositoryUrl ?? `https://github.com/rokucommunity/${name}`;
-        this.version = version;
+        this.version = '';
         this.dependencies = [];
         this.devDependencies = [];
         this.changes = [];
