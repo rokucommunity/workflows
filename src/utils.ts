@@ -61,7 +61,6 @@ export class utils {
     static executeCommandSucceeds(command: string, options?: any) {
         options = { ...options, env: process.env };
         try {
-            command = `${command} && echo 1`;
             if (this.isVerbose()) {
                 logger.inLog(`Executing ${command} with ${JSON.stringify(options)} and checking for success`);
             }
@@ -69,7 +68,7 @@ export class utils {
             if (this.isVerbose()) {
                 console.log(response);
             }
-            return (response === '1');
+            return true;
         } catch (e) {
             return false;
         }
