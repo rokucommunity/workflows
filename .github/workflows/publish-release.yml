@@ -22,10 +22,11 @@ jobs:
   publish-release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout .github repo
+      - name: Checkout the rokucommunity/workflows repo
         uses: actions/checkout@master
         with:
           repository: rokucommunity/workflows
+          path: nested-ci
           ref: ${{ inputs.workflows-ref }}
 
       - name: Setup node
@@ -50,7 +51,7 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
         run: |
-          npx ts-node src/cli.ts \
+          npx ts-node nested-ci/src/cli.ts \
             publish-release \
             --projectName "${{ github.repository }}" \
             --ref ${{ inputs.ref }} \
