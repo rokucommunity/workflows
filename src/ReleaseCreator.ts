@@ -205,7 +205,7 @@ export class ReleaseCreator {
         logger.log(`Uploading artifacts`);
         for (const artifact of artifacts) {
             // eslint-disable-next-line @typescript-eslint/no-loop-func
-            const uploadAsset = async (fileName: string, options: { testRun?: boolean; projectName: string }) => {
+            const uploadAsset = async (fileName: string, releaseId: number, options: { testRun?: boolean; projectName: string }) => {
                 if (options.testRun) {
                     logger.log(`TEST RUN: Skipping upload of asset ${fileName}`);
                     return false;
@@ -213,7 +213,7 @@ export class ReleaseCreator {
                 let uploadResponse = await this.octokit.repos.uploadReleaseAsset({
                     owner: this.ORG,
                     repo: options.projectName,
-                    release_id: draftRelease.id,
+                    release_id: releaseId,
                     name: fileName,
                     data: (fsExtra.readFileSync(artifact) as unknown as string),
                     headers: {
@@ -228,13 +228,42 @@ export class ReleaseCreator {
                 }
                 return true;
             };
+            const uploadTemporaryAsset = async (fileName: string, options: { testRun?: boolean; projectName: string }) => {
+                //ensure that there is a release project 0.0.0 that's used for storing the temporary assets
+                //if it doesn't exist, create it
+                //octokit get reelase
+                const releases = await this.listGitHubReleases(options.projectName);
+                let temporaryReleaseBucket = releases.find(r => r.tag_name === `v0.0.0`);
+                if (temporaryReleaseBucket === undefined) {
+                    logger.inLog(`Creating temporary release bucket`);
+                    await this.octokit.rest.repos.createRelease({
+                        owner: this.ORG,
+                        repo: options.projectName,
+                        tag_name: 'v0.0.0',
+                        name: 'Temporary Release Bucket',
+                        body: 'This is a temporary release bucket for storing assets that are not yet released',
+                        draft: false
+                    });
+                } else if (temporaryReleaseBucket.draft === true) {
+                    logger.inLog(`Temporary release bucket already exists as a draft, change to published`);
+                    await this.octokit.rest.repos.updateRelease({
+                        owner: this.ORG,
+                        repo: options.projectName,
+                        release_id: temporaryReleaseBucket.id,
+                        draft: false
+                    });
+                }
+
+
+                await uploadAsset(fileName, temporaryReleaseBucket.id, options);
+            };
             const fileName = artifact.split('/').pop();
             logger.inLog(`Uploading ${fileName}`);
-            await uploadAsset(fileName, options);
+            await uploadAsset(fileName, draftRelease.id, options);
 
             const duplicateFileName = this.appendDateToArtifactName(fileName);
             logger.inLog(`Uploading duplicate ${fileName}`);
-            await uploadAsset(duplicateFileName, options);
+            await uploadTemporaryAsset(duplicateFileName, options);
             duplicateArtifacts.push(duplicateFileName);
         }
 
@@ -294,7 +323,7 @@ export class ReleaseCreator {
         logger.log(`Artifact name: ${artifactName}`);
         let npm;
         const tag = draftRelease.html_url.split('/').pop();
-        const duplicateDownloadLink = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${duplicateArtifactName}`;
+        const duplicateDownloadLink = `https://github.com/rokucommunity/${options.projectName}/releases/download/v0.0.0/${duplicateArtifactName}`;
         const npmCommand = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName}`;
         if (path.extname(artifactName) === '.tgz') {
             npm = {};
