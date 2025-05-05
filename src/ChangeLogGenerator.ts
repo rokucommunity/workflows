@@ -4,9 +4,8 @@
  * Only generate the changelog for an other class to commit.
  */
 import * as fsExtra from 'fs-extra';
-import { standardizePath as s } from 'brighterscript';
 import * as semver from 'semver';
-import { logger, utils } from './utils';
+import { logger, utils, standardizePath as s } from './utils';
 import type { Commit, Project } from './ProjectManager';
 import { ProjectManager } from './ProjectManager';
 

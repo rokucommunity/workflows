@@ -29,10 +29,11 @@ jobs:
   initialize-release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout .github repo
+      - name: Checkout the rokucommunity/workflows repo
         uses: actions/checkout@master
         with:
           repository: rokucommunity/workflows
+          path: nested-ci
           ref: ${{ inputs.workflows-ref }}
 
       - name: Setup node
@@ -40,8 +41,10 @@ jobs:
         with:
           node-version: '18.18.2'
 
-      - name: Run npm ci
-        run: npm ci
+      - name: CD into nested-ci, run npm ci
+        run: |
+          cd nested-ci
+          npm ci
 
       - name: get RokuCommunity bot token #so the bot's name shows up on all our actions
         uses: tibdex/github-app-token@v1
@@ -63,7 +66,7 @@ jobs:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
           DEBUG_LOGGING: ${{ env.RUNNER_DEBUG }}
         run: |
-          npx ts-node src/cli.ts \
+          npx ts-node nested-ci/src/cli.ts \
             initialize-release \
             --projectName "${{ github.repository }}" \
             --releaseType "${{ inputs.releaseType }}" \

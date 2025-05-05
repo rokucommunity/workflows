@@ -20,16 +20,15 @@
   "dependencies": {
     "@octokit/rest": "^20.1.1",
     "@vscode/vsce": "^2.22.0",
-    "brighterscript": "^0.69.0",
     "dotenv": "^16.4.7",
     "fast-glob": "^3.3.3",
     "fs-extra": "^11.3.0",
     "node-fetch": "^2.7.0",
+    "ovsx": "^0.8.3",
     "parse-diff": "^0.11.1",
     "semver": "^7.6.3",
-    "yargs": "^17.7.2",
-    "ovsx": "^0.8.3",
-    "tsx": "^4.19.3"
+    "tsx": "^4.19.3",
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
     "@types/chai": "^4.2.22",
