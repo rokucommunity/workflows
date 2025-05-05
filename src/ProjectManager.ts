@@ -1,8 +1,7 @@
 import fetch from 'node-fetch';
 import * as fsExtra from 'fs-extra';
 import * as semver from 'semver';
-import { standardizePath as s } from 'brighterscript';
-import { logger, utils } from './utils';
+import { logger, utils, standardizePath as s } from './utils';
 import { Octokit } from '@octokit/rest';
 
 /**
