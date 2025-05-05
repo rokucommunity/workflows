@@ -237,8 +237,8 @@ export class ReleaseCreator {
                         owner: this.ORG,
                         repo: options.projectName,
                         tag_name: 'v0.0.0',
-                        name: 'Temporary Release Bucket',
-                        body: 'This is a temporary release bucket for storing assets that are not yet released',
+                        name: 'v0.0.0-packages',
+                        body: 'catchall release for temp packages',
                         draft: false
                     });
                     releases = await this.listGitHubReleases(options.projectName);
