@@ -35,7 +35,7 @@ jobs:
           node-version: '18.18.2'
 
       - name: Run npm ci
-        run: npm ci
+        run: npm install
 
       - name: Set RUNNER_DEBUG env variable
         run: |
