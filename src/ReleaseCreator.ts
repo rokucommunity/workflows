@@ -229,10 +229,7 @@ export class ReleaseCreator {
                 return true;
             };
             const uploadTemporaryAsset = async (fileName: string, options: { testRun?: boolean; projectName: string }) => {
-                //ensure that there is a release project 0.0.0 that's used for storing the temporary assets
-                //if it doesn't exist, create it
-                //octokit get reelase
-                const releases = await this.listGitHubReleases(options.projectName);
+                let releases = await this.listGitHubReleases(options.projectName);
                 let temporaryReleaseBucket = releases.find(r => r.tag_name === `v0.0.0`);
                 if (temporaryReleaseBucket === undefined) {
                     logger.inLog(`Creating temporary release bucket`);
@@ -244,6 +241,8 @@ export class ReleaseCreator {
                         body: 'This is a temporary release bucket for storing assets that are not yet released',
                         draft: false
                     });
+                    releases = await this.listGitHubReleases(options.projectName);
+                    temporaryReleaseBucket = releases.find(r => r.tag_name === `v0.0.0`);
                 } else if (temporaryReleaseBucket.draft === true) {
                     logger.inLog(`Temporary release bucket already exists as a draft, change to published`);
                     await this.octokit.rest.repos.updateRelease({
