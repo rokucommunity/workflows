@@ -241,6 +241,7 @@ export class ReleaseCreator {
                         body: 'catchall release for temp packages',
                         draft: false
                     });
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                     releases = await this.listGitHubReleases(options.projectName);
                     temporaryReleaseBucket = releases.find(r => r.tag_name === `v0.0.0`);
                 } else if (temporaryReleaseBucket.draft === true) {
