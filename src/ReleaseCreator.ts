@@ -335,7 +335,7 @@ export class ReleaseCreator {
         let npm;
         const tag = draftRelease.html_url.split('/').pop();
         const duplicateDownloadLink = `https://github.com/rokucommunity/${options.projectName}/releases/download/v0.0.0/${duplicateArtifactName}`;
-        const npmCommand = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName}`;
+        const npmCommand = `https://github.com/rokucommunity/${options.projectName}/releases/download/v0.0.0/${duplicateArtifactName}`;
         if (path.extname(artifactName) === '.tgz') {
             npm = {};
             npm.downloadLink = duplicateDownloadLink;
