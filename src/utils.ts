@@ -1,5 +1,6 @@
 import { execSync } from 'child_process';
 import * as semver from 'semver';
+import * as path from 'path';
 
 export class logger {
     private static instance: logger;
@@ -120,4 +121,60 @@ export class utils {
         }
         throw new Error(message);
     }
+
+    private static isWindows = process.platform === 'win32';
+    private static standardizePathCache = new Map<string, string>();
+
+    /**
+     * Converts a path into a standardized format (drive letter to lower, remove extra slashes, use single slash type, resolve relative parts, etc...)
+     */
+    public static standardizePath(thePath: string): string {
+        //if we have the value in cache already, return it
+        if (this.standardizePathCache.has(thePath)) {
+            return this.standardizePathCache.get(thePath);
+        }
+        const originalPath = thePath;
+
+        if (typeof thePath !== 'string') {
+            return thePath;
+        }
+
+        //windows path.normalize will convert all slashes to backslashes and remove duplicates
+        if (this.isWindows) {
+            thePath = path.win32.normalize(thePath);
+        } else {
+            //replace all windows or consecutive slashes with path.sep
+            thePath = thePath.replace(/[\/\\]+/g, '/');
+
+            // only use path.normalize if dots are present since it's expensive
+            if (thePath.includes('./')) {
+                thePath = path.posix.normalize(thePath);
+            }
+        }
+
+        // Lowercase drive letter on Windows-like paths (e.g., "C:/...")
+        if (thePath.charCodeAt(1) === 58 /* : */) {
+            // eslint-disable-next-line no-var
+            var firstChar = thePath.charCodeAt(0);
+            if (firstChar >= 65 && firstChar <= 90) {
+                thePath = String.fromCharCode(firstChar + 32) + thePath.slice(1);
+            }
+        }
+        this.standardizePathCache.set(originalPath, thePath);
+        return thePath;
+    }
+}
+
+/**
+ * A tagged template literal function for standardizing the path. This has to be defined as standalone function since it's a tagged template literal function,
+ * we can't use `object.tag` syntax.
+ */
+export function standardizePath(stringParts, ...expressions: any[]) {
+    let result: string[] = [];
+    for (let i = 0; i < stringParts.length; i++) {
+        result.push(stringParts[i], expressions[i]);
+    }
+    return utils.standardizePath(
+        result.join('')
+    );
 }
