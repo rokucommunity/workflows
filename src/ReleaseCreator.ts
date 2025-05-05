@@ -260,7 +260,7 @@ export class ReleaseCreator {
             logger.inLog(`Uploading ${fileName}`);
             await uploadAsset(fileName, draftRelease.id, options);
 
-            const duplicateFileName = this.appendDateToArtifactName(fileName);
+            const duplicateFileName = this.appendDateToArtifactName(fileName, releaseVersion);
             logger.inLog(`Uploading duplicate ${fileName}`);
             await uploadTemporaryAsset(duplicateFileName, options);
             duplicateArtifacts.push(duplicateFileName);
@@ -671,9 +671,9 @@ export class ReleaseCreator {
         return findArtifact() ?? assetNameHint; //if nothing is found, return the name hint
     }
 
-    private appendDateToArtifactName(artifactName: string) {
-        const date = new Date().toISOString().replace(/[-:]/g, '').split('.')[0];
-        return artifactName.replace(/(\.[^.]+)$/, `.${date}$1`);
+    private appendDateToArtifactName(artifactName: string, releaseVersion: string) {
+        const date = new Date().toISOString().replace(/[-:]/g, '').replace('T', '').split('.')[0];
+        return artifactName.replace(/(\.[^.]+)$/, `-${releaseVersion}.${date}$1`);
     }
 
 }
