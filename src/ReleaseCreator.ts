@@ -402,7 +402,6 @@ export class ReleaseCreator {
             return result;
         });
 
-        const regex = /-temp-build-\d{4}-\d{2}-\d{2}T\d{2}\.\d{2}\.\d{2}\.\d{3}Z/;
         for (const asset of assets) {
             logger.inLog(`Release asset: ${asset.name}`);
             const assetResponse = await this.octokit.repos.getReleaseAsset({
@@ -413,20 +412,9 @@ export class ReleaseCreator {
                     'Accept': 'application/octet-stream'
                 }
             });
-
-            if (regex.test(asset.name)) {
-                logger.inLog(`Deleting temporary asset ${asset.name}`);
-                await this.octokit.repos.deleteReleaseAsset({
-                    owner: this.ORG,
-                    repo: options.projectName,
-                    asset_id: asset.id
-                });
-                continue;
-            }
             const buffer = Buffer.from(new Uint8Array(assetResponse.data as any));
             fsExtra.writeFileSync(s`${project.dir}/${asset.name}`, buffer);
         }
-        assets = assets.filter(a => !regex.test(a.name));
 
         const artifactName = this.getArtifactName(assets.map(a => a.name), this.getAssetName(project.dir, path.extname(assets[0].name)));
 
@@ -684,8 +672,8 @@ export class ReleaseCreator {
     }
 
     private appendDateToArtifactName(artifactName: string) {
-        const date = new Date().toISOString().replace(/:/g, '.');
-        return artifactName.replace(/(\.[^.]+)$/, `-temp-build-${date}$1`);
+        const date = new Date().toISOString().replace(/[-:]/g, '').split('.')[0];
+        return artifactName.replace(/(\.[^.]+)$/, `.${date}$1`);
     }
 
 }
