@@ -78,7 +78,7 @@ export class ReleaseCreator {
         }
 
         logger.log(`Check if a pull request already exists for ${releaseVersion}`);
-        const pullRequest = await this.getPullRequest(options.projectName, releaseVersion);
+        let pullRequest = await this.getPullRequest(options.projectName, releaseVersion);
         if (pullRequest) {
             utils.throwError(`Pull request ${pullRequest.number} already exists`, options);
         }
@@ -138,6 +138,17 @@ export class ReleaseCreator {
             body: this.makePullRequestBody({ ...options, releaseVersion: releaseVersion, prevReleaseVersion: prevReleaseVersion, isDraft: true }),
             draft: false
         });
+
+        pullRequest = await this.getPullRequest(options.projectName, releaseVersion);
+        if (pullRequest) {
+            logger.log(`Add the back link to the edit changelog link`);
+            await this.octokit.rest.pulls.update({
+                owner: this.ORG,
+                repo: options.projectName,
+                pull_number: pullRequest.number,
+                body: this.makePullRequestBody({ ...options, releaseVersion: releaseVersion, prevReleaseVersion: prevReleaseVersion, isDraft: true, prNumber: pullRequest.number }),
+            });
+        }
 
         logger.decreaseIndent();
     }
