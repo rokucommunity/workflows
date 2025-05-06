@@ -241,13 +241,11 @@ export class ReleaseCreator {
                 let temporaryReleaseBucket = releases.find(r => r.tag_name === `v0.0.0`);
                 if (temporaryReleaseBucket === undefined) {
                     logger.inLog(`Creating temporary release bucket`);
-                    const firstCommitRef = utils.executeCommandWithOutput(`git rev-list --max-parents=0 HEAD`, { cwd: project.dir }).toString().trim();
                     await this.octokit.rest.repos.createRelease({
                         owner: this.ORG,
                         repo: options.projectName,
                         tag_name: 'v0.0.0-packages',
                         name: 'v0.0.0-packages',
-                        target_commitish: firstCommitRef,
                         body: 'catchall release for temp packages',
                         draft: false
                     });
