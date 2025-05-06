@@ -20,6 +20,7 @@ type ReleaseType = 'major' | 'minor' | 'patch' | 'prerelease';
 export class ReleaseCreator {
     private octokit: Octokit;
     private ORG = 'rokucommunity';
+    private temporaryBucketTagName = 'v0.0.0-packages';
 
     constructor() {
         dotenv.config();
@@ -238,20 +239,20 @@ export class ReleaseCreator {
             };
             const uploadTemporaryAsset = async (fileName: string, options: { testRun?: boolean; projectName: string }) => {
                 let releases = await this.listGitHubReleases(options.projectName);
-                let temporaryReleaseBucket = releases.find(r => r.tag_name === `v0.0.0`);
+                let temporaryReleaseBucket = releases.find(r => r.tag_name === this.temporaryBucketTagName);
                 if (temporaryReleaseBucket === undefined) {
                     logger.inLog(`Creating temporary release bucket`);
                     await this.octokit.rest.repos.createRelease({
                         owner: this.ORG,
                         repo: options.projectName,
-                        tag_name: 'v0.0.0-packages',
-                        name: 'v0.0.0-packages',
+                        tag_name: this.temporaryBucketTagName,
+                        name: this.temporaryBucketTagName,
                         body: 'catchall release for temp packages',
                         draft: false
                     });
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     releases = await this.listGitHubReleases(options.projectName);
-                    temporaryReleaseBucket = releases.find(r => r.tag_name === `v0.0.0`);
+                    temporaryReleaseBucket = releases.find(r => r.tag_name === this.temporaryBucketTagName);
                 } else if (temporaryReleaseBucket.draft === true) {
                     logger.inLog(`Temporary release bucket already exists as a draft, change to published`);
                     await this.octokit.rest.repos.updateRelease({
@@ -331,8 +332,8 @@ export class ReleaseCreator {
         logger.log(`Artifact name: ${artifactName}`);
         let npm;
         const tag = draftRelease.html_url.split('/').pop();
-        const duplicateDownloadLink = `https://github.com/rokucommunity/${options.projectName}/releases/download/v0.0.0/${duplicateArtifactName}`;
-        const npmCommand = `https://github.com/rokucommunity/${options.projectName}/releases/download/v0.0.0/${duplicateArtifactName}`;
+        const duplicateDownloadLink = `https://github.com/rokucommunity/${options.projectName}/releases/download/${this.temporaryBucketTagName}/${duplicateArtifactName}`;
+        const npmCommand = `https://github.com/rokucommunity/${options.projectName}/releases/download/${this.temporaryBucketTagName}/${duplicateArtifactName}`;
         if (path.extname(artifactName) === '.tgz') {
             npm = {};
             npm.downloadLink = duplicateDownloadLink;
