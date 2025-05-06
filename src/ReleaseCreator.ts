@@ -161,9 +161,6 @@ export class ReleaseCreator {
         logger.log(`Upload release... artifactPaths: ${options.artifactPaths}`);
         logger.increaseIndent();
 
-        //TODO this needs another look. We get the artifacts from the previous step and upload them.
-        //The only thing that uses the diretory is getting the version which reads the package.json
-        //I can't assume that I'm running in the repo I care about though so this might be necessary
         const project = await ProjectManager.initialize({ ...options, installDependencies: false });
 
         logger.log(`Checkout the release branch ${options.branch}`);
@@ -244,11 +241,13 @@ export class ReleaseCreator {
                 let temporaryReleaseBucket = releases.find(r => r.tag_name === `v0.0.0`);
                 if (temporaryReleaseBucket === undefined) {
                     logger.inLog(`Creating temporary release bucket`);
+                    const firstCommitRef = utils.executeCommandWithOutput(`git rev-list --max-parents=0 HEAD`, { cwd: project.dir }).toString().trim();
                     await this.octokit.rest.repos.createRelease({
                         owner: this.ORG,
                         repo: options.projectName,
-                        tag_name: 'v0.0.0',
+                        tag_name: 'v0.0.0-packages',
                         name: 'v0.0.0-packages',
+                        target_commitish: firstCommitRef,
                         body: 'catchall release for temp packages',
                         draft: false
                     });
