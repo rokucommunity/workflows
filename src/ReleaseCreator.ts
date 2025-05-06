@@ -147,7 +147,7 @@ export class ReleaseCreator {
                 owner: this.ORG,
                 repo: options.projectName,
                 pull_number: pullRequest.number,
-                body: this.makePullRequestBody({ ...options, releaseVersion: releaseVersion, prevReleaseVersion: prevReleaseVersion, isDraft: true, prNumber: pullRequest.number }),
+                body: this.makePullRequestBody({ ...options, releaseVersion: releaseVersion, prevReleaseVersion: prevReleaseVersion, isDraft: true, prNumber: pullRequest.number })
             });
         }
 
@@ -250,7 +250,7 @@ export class ReleaseCreator {
                         body: 'catchall release for temp packages',
                         draft: false
                     });
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await utils.sleep(1000);
                     releases = await this.listGitHubReleases(options.projectName);
                     temporaryReleaseBucket = releases.find(r => r.tag_name === this.temporaryBucketTagName);
                 } else if (temporaryReleaseBucket.draft === true) {

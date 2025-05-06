@@ -163,6 +163,17 @@ export class utils {
         this.standardizePathCache.set(originalPath, thePath);
         return thePath;
     }
+
+    public static sleep(milliseconds: number) {
+        let handle: NodeJS.Timeout;
+        const promise = new Promise((resolve) => {
+            handle = setTimeout(resolve, milliseconds);
+        }) as Promise<void> & { cancel: () => void };
+        promise.cancel = () => {
+            clearTimeout(handle);
+        };
+        return promise;
+    }
 }
 
 /**
