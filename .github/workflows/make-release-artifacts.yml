@@ -43,7 +43,7 @@ jobs:
           fi
 
       - name: if head fork print message 2
-        if: github.event.pull_request.head.repo.fork == 'true'
+        if: ${{github.event.pull_request.head.repo.fork}} != 'true'
         run: |
             echo "This is a forked repo"
 
