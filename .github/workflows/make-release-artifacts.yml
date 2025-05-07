@@ -23,31 +23,9 @@ on:
 
 jobs:
   make-release-artifacts:
+    if: ${{ github.event.pull_request.head.repo.fork == false }}
     runs-on: ubuntu-latest
     steps:
-      - name: Dump GH context to log
-        run: |
-          echo "===== GITHUB CONTEXT ====="
-          echo "github...base.fork = ${{ github.event.pull_request.base.repo.fork }}
-          echo "github...head.fork = ${{ github.event.pull_request.head.repo.fork }}
-          echo "pull request. base: ${{ toJson(github.event.pull_request.base) }}"
-          echo "pull request. head: ${{ toJson(github.event.pull_request.head) }}"
-          echo "===="
-
-      - name: if head fork print message
-        run: |
-          if [[ "${{ github.event.pull_request.head.repo.fork }}" == "true" ]]; then
-            echo "This is a forked repo"
-          else
-            echo "This is not a forked repo"
-          fi
-
-      - name: if head fork print message 2
-        if: ${{ github.event.pull_request.head.repo.fork == false }}
-        run: |
-            echo "This is not a forked repo"
-
-
       - name: Checkout caller repo
         uses: actions/checkout@master
         with:
