@@ -30,7 +30,11 @@ jobs:
           echo "===== GITHUB CONTEXT ====="
           echo "github...base.fork = ${{ github.event.pull_request.base.fork }}
           echo "github...head.fork = ${{ github.event.pull_request.head.fork }}
-          echo "====
+          echo "event: ${{ toJson(github.event) }}"
+          echo "pull request: ${{ toJson(github.event.pull_request) }}"
+          echo "pull request. base: ${{ toJson(github.event.pull_request.base) }}"
+          echo "pull request. head: ${{ toJson(github.event.pull_request.head) }}"
+          echo "===="
 
       - name: Checkout caller repo
         uses: actions/checkout@master
