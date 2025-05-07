@@ -25,6 +25,12 @@ jobs:
   make-release-artifacts:
     runs-on: ubuntu-latest
     steps:
+      - name: Dump GH context to log
+        run: |
+          echo "===== GITHUB CONTEXT ====="
+          echo "${{ toJson(github) }}"
+          echo "====
+
       - name: Checkout caller repo
         uses: actions/checkout@master
         with:
