@@ -29,12 +29,6 @@ jobs:
   initialize-release:
     runs-on: ubuntu-latest
     steps:
-      - name: print repo vars
-        run: |
-          echo "GITHUB_REPOSITORY: ${{ github.repository }}"
-          echo "head repo full name: ${{ github.event.pull_request.head.repo.full_name }}"
-          echo "head repository full name: ${{ github.event.pull_request.head.repository.full_name }}"
-
       - name: Checkout the rokucommunity/workflows repo
         uses: actions/checkout@master
         with:
