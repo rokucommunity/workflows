@@ -28,7 +28,8 @@ jobs:
       - name: Dump GH context to log
         run: |
           echo "===== GITHUB CONTEXT ====="
-          echo "${{ toJson(github) }}"
+          echo "github...base.fork = ${{ github.event.pull_request.base.fork }}
+          echo "github...head.fork = ${{ github.event.pull_request.head.fork }}
           echo "====
 
       - name: Checkout caller repo
