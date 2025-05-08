@@ -516,7 +516,7 @@ export class ReleaseCreator {
         }
 
         logger.log(`Rename pull request for abandoned release ${releaseVersion}`);
-        const pullRequest = await this.getPullRequest(options.projectName, releaseVersion);
+        const pullRequest = await this.getPullRequest(options.projectName, releaseVersion, 'closed');
 
         if (pullRequest) {
             try {
@@ -530,6 +530,17 @@ export class ReleaseCreator {
             } catch (error) {
                 logger.log(`Failed to close pull request ${pullRequest.number}`);
             }
+        }
+
+        try {
+            logger.log(`Delete branch release/${releaseVersion}`);
+            await this.octokit.rest.git.deleteRef({
+                owner: this.ORG,
+                repo: options.projectName,
+                ref: `heads/release/${releaseVersion}`
+            });
+        } catch (error) {
+            logger.log(`Failed to delete branch release/${releaseVersion}`);
         }
 
         logger.decreaseIndent();
