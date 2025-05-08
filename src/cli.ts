@@ -48,6 +48,16 @@ export const options = yargs
             process.exit(1);
         });
     })
+    .command('close-release', 'Close GitHub release, PR, and branch', (builder) => {
+        return builder
+            .option('projectName', { type: 'string', description: 'The name of the project to create the release for' });
+    }, (argv) => {
+        argv = preSetup(argv);
+        new ReleaseCreator().closeRelease(argv).catch(e => {
+            console.error(e);
+            process.exit(1);
+        });
+    })
     .command('delete-release', 'Delete GitHub release, close pull request, and delete branch', (builder) => {
         return builder
             .option('projectName', { type: 'string', description: 'The name of the project to create the release for' })
