@@ -92,10 +92,6 @@ jobs:
             echo "RUNNER_DEBUG=false" >> $GITHUB_ENV
           fi
 
-      - name: print json object
-        run: |
-          echo "${{ toJson(github.event.pull_request.head) }}"
-
       - name: Run close
         env:
           GH_TOKEN: ${{ github.token }}
