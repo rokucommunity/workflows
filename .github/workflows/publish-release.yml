@@ -11,10 +11,6 @@ on:
             type: string
             description: "The type of release. Can be 'npm` or 'vsce'"
             required: true
-        merged:
-            type: boolean
-            description: "True if the release was merged"
-            required: false
         workflows-ref:
             type: string
             description: "The ref to run the workflow"
