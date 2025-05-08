@@ -101,6 +101,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           npx ts-node nested-ci/src/cli.ts \
-            publish-release \
+            close-release \
             --projectName "${{ github.repository }}" \
             --ref ${{ github.event.pull_request.head.ref }}
