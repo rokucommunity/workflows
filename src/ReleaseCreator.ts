@@ -20,6 +20,7 @@ type ReleaseType = 'major' | 'minor' | 'patch' | 'prerelease';
 export class ReleaseCreator {
     private octokit: Octokit;
     private ORG = 'rokucommunity';
+    private temporaryBucketTagName = 'v0.0.0-packages';
 
     constructor() {
         dotenv.config();
@@ -78,7 +79,7 @@ export class ReleaseCreator {
         }
 
         logger.log(`Check if a pull request already exists for ${releaseVersion}`);
-        const pullRequest = await this.getPullRequest(options.projectName, releaseVersion);
+        let pullRequest = await this.getPullRequest(options.projectName, releaseVersion);
         if (pullRequest) {
             utils.throwError(`Pull request ${pullRequest.number} already exists`, options);
         }
@@ -139,6 +140,17 @@ export class ReleaseCreator {
             draft: false
         });
 
+        pullRequest = await this.getPullRequest(options.projectName, releaseVersion);
+        if (pullRequest) {
+            logger.log(`Add the back link to the edit changelog link`);
+            await this.octokit.rest.pulls.update({
+                owner: this.ORG,
+                repo: options.projectName,
+                pull_number: pullRequest.number,
+                body: this.makePullRequestBody({ ...options, releaseVersion: releaseVersion, prevReleaseVersion: prevReleaseVersion, isDraft: true, prNumber: pullRequest.number })
+            });
+        }
+
         logger.decreaseIndent();
     }
 
@@ -150,9 +162,6 @@ export class ReleaseCreator {
         logger.log(`Upload release... artifactPaths: ${options.artifactPaths}`);
         logger.increaseIndent();
 
-        //TODO this needs another look. We get the artifacts from the previous step and upload them.
-        //The only thing that uses the diretory is getting the version which reads the package.json
-        //I can't assume that I'm running in the repo I care about though so this might be necessary
         const project = await ProjectManager.initialize({ ...options, installDependencies: false });
 
         logger.log(`Checkout the release branch ${options.branch}`);
@@ -205,7 +214,7 @@ export class ReleaseCreator {
         logger.log(`Uploading artifacts`);
         for (const artifact of artifacts) {
             // eslint-disable-next-line @typescript-eslint/no-loop-func
-            const uploadAsset = async (fileName: string, options: { testRun?: boolean; projectName: string }) => {
+            const uploadAsset = async (fileName: string, releaseId: number, options: { testRun?: boolean; projectName: string }) => {
                 if (options.testRun) {
                     logger.log(`TEST RUN: Skipping upload of asset ${fileName}`);
                     return false;
@@ -213,7 +222,7 @@ export class ReleaseCreator {
                 let uploadResponse = await this.octokit.repos.uploadReleaseAsset({
                     owner: this.ORG,
                     repo: options.projectName,
-                    release_id: draftRelease.id,
+                    release_id: releaseId,
                     name: fileName,
                     data: (fsExtra.readFileSync(artifact) as unknown as string),
                     headers: {
@@ -228,13 +237,42 @@ export class ReleaseCreator {
                 }
                 return true;
             };
+            const uploadTemporaryAsset = async (fileName: string, options: { testRun?: boolean; projectName: string }) => {
+                let releases = await this.listGitHubReleases(options.projectName);
+                let temporaryReleaseBucket = releases.find(r => r.tag_name === this.temporaryBucketTagName);
+                if (temporaryReleaseBucket === undefined) {
+                    logger.inLog(`Creating temporary release bucket`);
+                    await this.octokit.rest.repos.createRelease({
+                        owner: this.ORG,
+                        repo: options.projectName,
+                        tag_name: this.temporaryBucketTagName,
+                        name: this.temporaryBucketTagName,
+                        body: 'catchall release for temp packages',
+                        draft: false
+                    });
+                    await utils.sleep(1000);
+                    releases = await this.listGitHubReleases(options.projectName);
+                    temporaryReleaseBucket = releases.find(r => r.tag_name === this.temporaryBucketTagName);
+                } else if (temporaryReleaseBucket.draft === true) {
+                    logger.inLog(`Temporary release bucket already exists as a draft, change to published`);
+                    await this.octokit.rest.repos.updateRelease({
+                        owner: this.ORG,
+                        repo: options.projectName,
+                        release_id: temporaryReleaseBucket.id,
+                        draft: false
+                    });
+                }
+
+
+                await uploadAsset(fileName, temporaryReleaseBucket.id, options);
+            };
             const fileName = artifact.split('/').pop();
             logger.inLog(`Uploading ${fileName}`);
-            await uploadAsset(fileName, options);
+            await uploadAsset(fileName, draftRelease.id, options);
 
-            const duplicateFileName = this.appendDateToArtifactName(fileName);
+            const duplicateFileName = this.appendDateToArtifactName(fileName, releaseVersion, options.branch);
             logger.inLog(`Uploading duplicate ${fileName}`);
-            await uploadAsset(duplicateFileName, options);
+            await uploadTemporaryAsset(duplicateFileName, options);
             duplicateArtifacts.push(duplicateFileName);
         }
 
@@ -294,8 +332,8 @@ export class ReleaseCreator {
         logger.log(`Artifact name: ${artifactName}`);
         let npm;
         const tag = draftRelease.html_url.split('/').pop();
-        const duplicateDownloadLink = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${duplicateArtifactName}`;
-        const npmCommand = `https://github.com/rokucommunity/${options.projectName}/releases/download/${tag}/${artifactName}`;
+        const duplicateDownloadLink = `https://github.com/rokucommunity/${options.projectName}/releases/download/${this.temporaryBucketTagName}/${duplicateArtifactName}`;
+        const npmCommand = `https://github.com/rokucommunity/${options.projectName}/releases/download/${this.temporaryBucketTagName}/${duplicateArtifactName}`;
         if (path.extname(artifactName) === '.tgz') {
             npm = {};
             npm.downloadLink = duplicateDownloadLink;
@@ -374,7 +412,6 @@ export class ReleaseCreator {
             return result;
         });
 
-        const regex = /-temp-build-\d{4}-\d{2}-\d{2}T\d{2}\.\d{2}\.\d{2}\.\d{3}Z/;
         for (const asset of assets) {
             logger.inLog(`Release asset: ${asset.name}`);
             const assetResponse = await this.octokit.repos.getReleaseAsset({
@@ -385,20 +422,9 @@ export class ReleaseCreator {
                     'Accept': 'application/octet-stream'
                 }
             });
-
-            if (regex.test(asset.name)) {
-                logger.inLog(`Deleting temporary asset ${asset.name}`);
-                await this.octokit.repos.deleteReleaseAsset({
-                    owner: this.ORG,
-                    repo: options.projectName,
-                    asset_id: asset.id
-                });
-                continue;
-            }
             const buffer = Buffer.from(new Uint8Array(assetResponse.data as any));
             fsExtra.writeFileSync(s`${project.dir}/${asset.name}`, buffer);
         }
-        assets = assets.filter(a => !regex.test(a.name));
 
         const artifactName = this.getArtifactName(assets.map(a => a.name), this.getAssetName(project.dir, path.extname(assets[0].name)));
 
@@ -655,9 +681,9 @@ export class ReleaseCreator {
         return findArtifact() ?? assetNameHint; //if nothing is found, return the name hint
     }
 
-    private appendDateToArtifactName(artifactName: string) {
-        const date = new Date().toISOString().replace(/:/g, '.');
-        return artifactName.replace(/(\.[^.]+)$/, `-temp-build-${date}$1`);
+    private appendDateToArtifactName(artifactName: string, releaseVersion: string, branch: string) {
+        const date = new Date().toISOString().replace(/[-:]/g, '').replace('T', '').split('.')[0];
+        return artifactName.replace(/(\.[^.]+)$/, `-${branch.replace('/', '_')}.${date}$1`);
     }
 
 }
