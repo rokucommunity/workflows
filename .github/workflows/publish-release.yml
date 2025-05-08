@@ -64,7 +64,7 @@ jobs:
             --releaseType ${{ inputs.release-type }}
 
   close-release:
-    if: ${{ github.events.pull_request.merged == true }}
+    if: ${{ github.events.pull_request.merged == false }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the rokucommunity/workflows repo
