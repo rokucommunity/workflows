@@ -59,10 +59,10 @@ jobs:
           npm ci
 
       - name: print github context
-        with:
-            github-context: ${{ toJson(github.event.pull_request) }}
-          run: |
-            echo "GITHUB_CONTEXT pull: $github-context"
+        env:
+          github-context: ${{ toJson(github.event.pull_request) }}
+        run: |
+          echo "GITHUB_CONTEXT pull: $github-context"
 
       - name: Set RUNNER_DEBUG env variable
         run: |
