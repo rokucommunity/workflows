@@ -23,6 +23,7 @@ on:
 
 jobs:
   make-release-artifacts:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.event.repository.full_name }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout caller repo
