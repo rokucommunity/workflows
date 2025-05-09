@@ -489,6 +489,63 @@ export class ReleaseCreator {
         logger.decreaseIndent();
     }
 
+    public async closeRelease(options: { projectName: string; ref: string }) {
+        logger.log(`Close release...version`);
+        logger.increaseIndent();
+
+        const project = await ProjectManager.initialize({ ...options, installDependencies: false });
+
+        logger.log(`Checkout the release ${options.ref}`);
+        utils.executeCommand(`git checkout --quiet ${options.ref}`, { cwd: project.dir });
+        const releaseVersion = await this.getVersion(project.dir);
+
+        logger.log(`Find the existing draft release`);
+        const releases = await this.listGitHubReleases(options.projectName);
+        let draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}` && r.draft);
+        if (draftRelease) {
+            try {
+                logger.log(`Deleting release ${releaseVersion}`);
+                await this.octokit.rest.repos.deleteRelease({
+                    owner: this.ORG,
+                    repo: options.projectName,
+                    release_id: draftRelease.id
+                });
+            } catch (error) {
+                logger.log(`Failed to delete release ${releaseVersion}`);
+            }
+        }
+
+        logger.log(`Rename pull request for abandoned release ${releaseVersion}`);
+        const pullRequest = await this.getPullRequest(options.projectName, releaseVersion, 'closed');
+
+        if (pullRequest) {
+            try {
+                await this.octokit.rest.pulls.update({
+                    owner: this.ORG,
+                    repo: options.projectName,
+                    pull_number: pullRequest.number,
+                    title: !pullRequest.title.startsWith(`(Abandoned)`) ? `(Abandoned) ${pullRequest.title}` : pullRequest.title
+                });
+                logger.log(`Update pull request title ${pullRequest.number}`);
+            } catch (error) {
+                logger.log(`Failed to close pull request ${pullRequest.number}`);
+            }
+        }
+
+        try {
+            logger.log(`Delete branch release/${releaseVersion}`);
+            await this.octokit.rest.git.deleteRef({
+                owner: this.ORG,
+                repo: options.projectName,
+                ref: `heads/release/${releaseVersion}`
+            });
+        } catch (error) {
+            logger.log(`Failed to delete branch release/${releaseVersion}`);
+        }
+
+        logger.decreaseIndent();
+    }
+
     public async deleteRelease(options: { projectName: string; releaseVersion: string }) {
         logger.log(`Delete release...version: ${options.releaseVersion}`);
         logger.increaseIndent();
