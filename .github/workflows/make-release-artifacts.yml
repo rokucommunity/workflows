@@ -58,6 +58,10 @@ jobs:
           cd nested-ci
           npm ci
 
+      - name: print github context
+        run: |
+          echo "GITHUB_CONTEXT pull: ${{ toJson(github.event.pull_request) }}"
+
       - name: Set RUNNER_DEBUG env variable
         run: |
           if [[ "$RUNNER_DEBUG" == "1" ]]; then
