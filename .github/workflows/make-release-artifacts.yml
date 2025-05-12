@@ -59,16 +59,6 @@ jobs:
           cd nested-ci
           npm ci
 
-      - name: print github context
-        env:
-          github-context: ${{ toJson(github.event.pull_request) }}
-          github-full: ${{ toJson(github.event.repository.full_name) }}
-          github-head-full: ${{ toJson(github.event.pull_request.head.repo.full_name) }}
-        run: |
-          echo "GITHUB_CONTEXT pull: $github-context"
-          echo "GITHUB_FULL pull: $github-full"
-          echo "GITHUB_HEAD_FULL pull: $github-head-full"
-
       - name: test fork check 1
         if: ${{ github.event.pull_request.head.repo.full_name != github.event.repository.full_name }}
         run: |
