@@ -17,9 +17,9 @@ on:
             required: false
             default: "master"
 
-
 jobs:
   publish-release:
+    if: ${{ github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.event.repository.full_name }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the rokucommunity/workflows repo
@@ -58,3 +58,41 @@ jobs:
             --projectName "${{ github.repository }}" \
             --ref ${{ inputs.ref }} \
             --releaseType ${{ inputs.release-type }}
+
+  close-release:
+    if: ${{ github.event.pull_request.merged == false && github.event.pull_request.head.repo.full_name == github.event.repository.full_name }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the rokucommunity/workflows repo
+        uses: actions/checkout@master
+        with:
+          repository: rokucommunity/workflows
+          path: nested-ci
+          ref: ${{ inputs.workflows-ref }}
+
+      - name: Setup node
+        uses: actions/setup-node@master
+        with:
+          node-version: '18.18.2'
+
+      - name: CD into nested-ci, run npm ci
+        run: |
+          cd nested-ci
+          npm ci
+
+      - name: Set RUNNER_DEBUG env variable
+        run: |
+          if [[ "$RUNNER_DEBUG" == "1" ]]; then
+            echo "RUNNER_DEBUG=true" >> $GITHUB_ENV
+          else
+            echo "RUNNER_DEBUG=false" >> $GITHUB_ENV
+          fi
+
+      - name: Run close
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          npx ts-node nested-ci/src/cli.ts \
+            close-release \
+            --projectName "${{ github.repository }}" \
+            --ref ${{ github.event.pull_request.head.ref }}
