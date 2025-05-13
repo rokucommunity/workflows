@@ -104,12 +104,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         for (const commit of this.getCommitLogs(project.name, project.lastTag, 'HEAD')) {
             const section = this.getChangelogHeaderForMessage(commit.message);
             if (section) {
+                if (section === 'Chore') {
+                    continue;
+                }
                 sectionMap[section].push(` - ${commit.message} (${getReflink(project, commit)})`);
             } else {
                 sectionMap.Changed.push(` - ${commit.message} (${getReflink(project, commit)})`);
             }
         }
-        //build changelog entries for each new dependency
+
         for (const dependency of [...project.dependencies, ...project.devDependencies]) {
             if (!utils.isVersion(dependency.previousReleaseVersion)) {
                 sectionMap.Added.push(` - added [${dependency.name}@${dependency.newVersion}](${ProjectManager.getProject(dependency.repoName).repositoryUrl})`);
