@@ -105,19 +105,19 @@ To integrate this release workflow system into a new repository, follow these st
    - The post-build step will look for release artifacts in this directory to upload to the GitHub release.
 
 ---
-### Setting Up Template Workflows in a Repository  
+### Setting Up Template Workflows in a Repository
 
-To integrate the release workflow system into a repository, follow these steps to add the required workflow templates from the **RokuCommunity** organization:  
+To integrate the release workflow system into a repository, follow these steps to add the required workflow templates from the **RokuCommunity** organization:
 
-### Step 1: Add Workflow Templates  
-1. Navigate to your repository on GitHub.  
-2. Click on the **Actions** tab.  
-3. Click **New workflow** or go directly to `.github/workflows`.  
-4. Under **"Choose a workflow"**, find the **By RokuCommunity** templates:  
+### Step 1: Add Workflow Templates
+1. Navigate to your repository on GitHub.
+2. Click on the **Actions** tab.
+3. Click **New workflow** or go directly to `.github/workflows`.
+4. Under **"Choose a workflow"**, find the **By RokuCommunity** templates:
    - **Initialize Release**
    - **Make Release Artifacts**
-   - **Publish Release**  
-5. Click on each template and select **"Configure"**.  
+   - **Publish Release**
+5. Click on each template and select **"Configure"**.
 
 ### Step 2: Check needed edits
 1. Edit `asset-paths` if needed
@@ -125,7 +125,7 @@ To integrate the release workflow system into a repository, follow these steps t
 2. Edit `publish-store` if needed
 
 ### Step 3: Commit the Workflow Files
-1. Click **Commit changes...**.  
+1. Click **Commit changes...**.
 2. Ensure the commit is made to the default branch (master)
 5. Click **Commit changes**
 
