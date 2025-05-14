@@ -90,28 +90,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
         const lines = [
             '', '', '', '',
-            `## [${releaseVersion}](${project.repositoryUrl}/compare/${project.lastTag}...v${releaseVersion}) - ${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
-            `### Changed`
+            `## [${releaseVersion}](${project.repositoryUrl}/compare/${project.lastTag}...v${releaseVersion}) - ${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
         ];
-        //add lines for each commit since last release
+        //build a map of commit messages to sections
+        const sectionMap: Record<ChangelogSection, string[]> = {
+            Added: [],
+            Changed: [],
+            Fixed: [],
+            Removed: [],
+            Chore: []
+        };
+
         for (const commit of this.getCommitLogs(project.name, project.lastTag, 'HEAD')) {
-            lines.push(` - ${commit.message} (${getReflink(project, commit)})`);
+            const section = this.getChangelogHeaderForMessage(commit.message);
+            if (section) {
+                if (section === 'Chore') {
+                    continue;
+                }
+                sectionMap[section].push(` - ${commit.message} (${getReflink(project, commit)})`);
+            } else {
+                sectionMap.Changed.push(` - ${commit.message} (${getReflink(project, commit)})`);
+            }
         }
 
-        //build changelog entries for each new dependency
         for (const dependency of [...project.dependencies, ...project.devDependencies]) {
             if (!utils.isVersion(dependency.previousReleaseVersion)) {
-                lines.push(` - added [${dependency.name}@${dependency.newVersion}](${ProjectManager.getProject(dependency.repoName).repositoryUrl})`);
+                sectionMap.Added.push(` - added [${dependency.name}@${dependency.newVersion}](${ProjectManager.getProject(dependency.repoName).repositoryUrl})`);
             } else if (dependency.previousReleaseVersion !== dependency.newVersion) {
                 const dependencyProject = ProjectManager.getProject(dependency.repoName);
-                lines.push([
-                    ` - upgrade to [${dependency.name}@${dependency.newVersion}]`,
-                    `(${dependencyProject.repositoryUrl}/blob/master/CHANGELOG.md#`,
-                    `${dependency.newVersion.replace(/\./g, '')}---${this.getVersionDate(dependencyProject.dir, dependency.newVersion)}). `,
-                    `Notable changes since ${dependency.previousReleaseVersion}:`
-                ].join(''));
-                for (const commit of this.getCommitLogs(dependency.repoName, dependency.previousReleaseVersion, dependency.newVersion)) {
-                    lines.push(`     - ${commit.message} (${getReflink(dependencyProject, commit, true)})`);
+                if (semver.gt(dependency.newVersion, dependency.previousReleaseVersion)) {
+                    sectionMap.Changed.push(
+                        [
+                            ` - upgrade to [${dependency.name}@${dependency.newVersion}]`,
+                            `(${dependencyProject.repositoryUrl}/blob/master/CHANGELOG.md#`,
+                            `${dependency.newVersion.replace(/\./g, '')}---${this.getVersionDate(dependencyProject.dir, dependency.newVersion)}). `,
+                            `Notable changes since ${dependency.previousReleaseVersion}:`
+                        ].join('')
+                    );
+                    for (let commit of this.getCommitLogs(dependency.repoName, dependency.previousReleaseVersion, dependency.newVersion)) {
+                        sectionMap.Changed.push(`     - ${commit.message} (${getReflink(project, commit)})`);
+                    }
+                } else {
+                    sectionMap.Changed.push(
+                        [
+                            ` - downgrade from ${dependency.previousReleaseVersion} to [${dependency.name}@${dependency.newVersion}]`,
+                            `(${dependencyProject.repositoryUrl}/blob/master/CHANGELOG.md#`,
+                            `${dependency.newVersion.replace(/\./g, '')}---${this.getVersionDate(dependencyProject.dir, dependency.newVersion)}).`
+                        ].join('')
+                    );
+
+                }
+            }
+        }
+
+        for (const [section, messages] of Object.entries(sectionMap)) {
+            if (messages.length > 0) {
+                lines.push(`### ${section}`);
+                for (const message of messages) {
+                    lines.push(message);
                 }
             }
         }
@@ -163,4 +199,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
         return commitMessages;
     }
+
+    private keywordToSectionMap: Record<ChangelogSection, string[]> = {
+        Added: ['add', 'added', 'new', 'create', 'created'],
+        Changed: ['change', 'changed', 'update', 'updated'],
+        Fixed: ['fix', 'fixed', 'resolve', 'resolved'],
+        Removed: ['remove', 'removed', 'delete', 'deleted', 'deprecate'],
+        Chore: ['chore']
+    };
+
+    private getChangelogHeaderForMessage(commitMessage: string): ChangelogSection | undefined {
+        const lowerMessage = commitMessage.toLowerCase();
+
+        for (const [section, keywords] of Object.entries(this.keywordToSectionMap)) {
+            for (const keyword of keywords) {
+                if (lowerMessage.startsWith(keyword)) {
+                    return section as ChangelogSection;
+                }
+            }
+        }
+    }
 }
+
+type ChangelogSection = 'Added' | 'Changed' | 'Fixed' | 'Removed' | 'Chore';
