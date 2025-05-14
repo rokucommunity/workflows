@@ -118,16 +118,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
                 sectionMap.Added.push(` - added [${dependency.name}@${dependency.newVersion}](${ProjectManager.getProject(dependency.repoName).repositoryUrl})`);
             } else if (dependency.previousReleaseVersion !== dependency.newVersion) {
                 const dependencyProject = ProjectManager.getProject(dependency.repoName);
-                sectionMap.Changed.push(
-                    [
-                        ` - upgrade to [${dependency.name}@${dependency.newVersion}]`,
-                        `(${dependencyProject.repositoryUrl}/blob/master/CHANGELOG.md#`,
-                        `${dependency.newVersion.replace(/\./g, '')}---${this.getVersionDate(dependencyProject.dir, dependency.newVersion)}). `,
-                        `Notable changes since ${dependency.previousReleaseVersion}:`
-                    ].join('')
-                );
-                for (let commit of this.getCommitLogs(dependency.repoName, dependency.previousReleaseVersion, dependency.newVersion)) {
-                    sectionMap.Changed.push(`     - ${commit.message} (${getReflink(project, commit)})`);
+                if (semver.gt(dependency.newVersion, dependency.previousReleaseVersion)) {
+                    sectionMap.Changed.push(
+                        [
+                            ` - upgrade to [${dependency.name}@${dependency.newVersion}]`,
+                            `(${dependencyProject.repositoryUrl}/blob/master/CHANGELOG.md#`,
+                            `${dependency.newVersion.replace(/\./g, '')}---${this.getVersionDate(dependencyProject.dir, dependency.newVersion)}). `,
+                            `Notable changes since ${dependency.previousReleaseVersion}:`
+                        ].join('')
+                    );
+                    for (let commit of this.getCommitLogs(dependency.repoName, dependency.previousReleaseVersion, dependency.newVersion)) {
+                        sectionMap.Changed.push(`     - ${commit.message} (${getReflink(project, commit)})`);
+                    }
+                } else {
+                    sectionMap.Changed.push(
+                        [
+                            ` - downgrade from ${dependency.previousReleaseVersion} to [${dependency.name}@${dependency.newVersion}]`,
+                            `(${dependencyProject.repositoryUrl}/blob/master/CHANGELOG.md#`,
+                            `${dependency.newVersion.replace(/\./g, '')}---${this.getVersionDate(dependencyProject.dir, dependency.newVersion)}).`
+                        ].join('')
+                    );
+
                 }
             }
         }
