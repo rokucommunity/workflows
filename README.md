@@ -8,7 +8,7 @@ This repository holds reusable and template workflows for the new release system
 - [Workflow Templates](#workflow-templates)
 - [Shared CI](#shared-ci)
   - [Step 1: Initialize Release](#step-1-initialize-release)
-  - [Step 2: Create Release Artifacts](#step-2-create-release-artifacts)
+  - [Step 2: Make Release Artifacts](#step-2-make-release-artifacts)
   - [Step 3: Publish Release](#step-3-publish-release)
 - [Repository Setup](#repository-setup)
   - [Setting Up Template Workflows in a Repository](#setting-up-template-workflows-in-a-repository)
@@ -19,7 +19,7 @@ This repository holds reusable and template workflows for the new release system
 
 ## Overview
 
-The CI flow consists of three key steps: **[Initialize Release](#step-1-initialize-release), [Create Release Artifacts](#step-2-create-release-artifacts), and [Publish Release](#step-3-publish-release)**. These workflows ensure a structured process for versioning, creating artifacts, and publishing new releases.
+The CI flow consists of three key steps: **[Initialize Release](#step-1-initialize-release), [Make Release Artifacts](#step-2-make-release-artifacts), and [Publish Release](#step-3-publish-release)**. These workflows ensure a structured process for versioning, creating artifacts, and publishing new releases.
 
 ---
 
@@ -49,22 +49,25 @@ Each workflow step has an associated **template** to set up workflow triggers an
   5. Open a draft GitHub release.
   6. Create a pull request for review. _Note, this new pull request will trigger the next step._
 - **Required Parameters**:
-  - `branch` (target branch for the release)
-  - `release_type` (e.g., major, minor, patch)
+  - `branch` target branch for the release
+  - `release_type` e.g., major, minor, patch, prerelease
+  - `customVersion` Ignore `release_type` and use this specified version
+  - `installDependencies` Automatically install other RokuCommunity dependencies
 - [Initialize Release Template](https://github.com/rokucommunity/.github/blob/master/workflow-templates/initialize-release.yml)
 
-### Step 2: Create Release Artifacts
+### Step 2: Make Release Artifacts
 
-- **Purpose**: Creates the release artifacts, and upload them.
+- **Purpose**: Makes the release artifacts, and upload them.
 - **Triggers**: Pushes and updates to `release/*` branches.
 - **Actions**:
     1. Build the release artifacts.
     2. Upload artifacts to the draft GitHub release.
+    3. Sets the GitHub Release body equal to the changes in the ChangeLog
 - **Required Parameters** _(these are hardcoded in the template)_:
-  - `branch` (The head ref for the release PR)
-  - `node-version` (The node version used to build the artifacts)
-  - `asset-paths` (The glob path used to get all the release artifacts)
-- [Create Release Artifacts Release Template](https://github.com/rokucommunity/.github/blob/master/workflow-templates/create-release-artifacts.yml)
+  - `branch` The head ref for the release PR
+  - `node-version` The node version used to build the artifacts. If needed edit the template when you add it to your project
+  - `asset-paths` The glob path used to get all the release artifacts
+- [Make Release Artifacts Release Template](https://github.com/rokucommunity/.github/blob/master/workflow-templates/make-release-artifacts.yml)
 ### Step 3: Publish Release
 
 
@@ -75,8 +78,8 @@ Each workflow step has an associated **template** to set up workflow triggers an
   2. Publish the release to users (e.g., npm, VS Code Marketplace).
 - [Publish Release Template](https://github.com/rokucommunity/.github/blob/master/workflow-templates/publish-release.yml)
 - **Required Parameters** _(these are hardcoded in the template)_:
-  - `branch` (The head ref for the release PR)
-  - `release-store` (The head ref for the release PR)
+  - `branch` The head ref for the release PR
+  - `release-store` The head ref for the release PR. If needed, specify what release store you are publishing to
 
 ---
 
@@ -84,7 +87,7 @@ Each workflow step has an associated **template** to set up workflow triggers an
 
 To integrate this release workflow system into a new repository, follow these steps:
 
-1. **Add Workflow Templates**: Each repository must include the workflow templates: `initialize-release`, `create-release-artifacts`, `publish-release` from this repository. More details in this section: [Setting Up Template Workflows in a Repository](#setting-up-template-workflows-in-a-repository)
+1. **Add Workflow Templates**: Each repository must include the workflow templates: `initialize-release`, `make-release-artifacts`, `publish-release` from this repository. More details in this section: [Setting Up Template Workflows in a Repository](#setting-up-template-workflows-in-a-repository)
 
      [_Example repository workflow setup_](https://github.com/rokucommunity/release-testing/tree/master/.github/workflows)
 
@@ -94,11 +97,11 @@ To integrate this release workflow system into a new repository, follow these st
    _Example `package.json`_
    ```json
     "scripts": {
-      "package": "echo \"Place holder for build command\" && mkdir out && echo \"Hello World!\" > hello.txt"
+      "package": "npm run build && npm pack"
     },
    ```
 3. **Build Artifacts Paths**:
-   - The `package` script name and place all artifacts in a way that the `asset_paths` set in [Create Release Artifacts Release Template](https://github.com/rokucommunity/.github/blob/master/workflow-templates/create-release-artifacts.yml) is selectable.
+   - The `package` script name and place all artifacts in a way that the `asset-paths` set in [Make Release Artifacts Release Template](https://github.com/rokucommunity/.github/blob/master/workflow-templates/make-release-artifacts.yml) is selectable.
    - The post-build step will look for release artifacts in this directory to upload to the GitHub release.
 
 ---
@@ -111,13 +114,13 @@ To integrate the release workflow system into a repository, follow these steps t
 2. Click on the **Actions** tab.  
 3. Click **New workflow** or go directly to `.github/workflows`.  
 4. Under **"Choose a workflow"**, find the **By RokuCommunity** templates:  
-   - **Initialize Release**  
-   - **Create Release Artifacts**  
+   - **Initialize Release**
+   - **Make Release Artifacts**
    - **Publish Release**  
 5. Click on each template and select **"Configure"**.  
 
 ### Step 2: Check needed edits
-1. Edit `asset_paths` if needed
+1. Edit `asset-paths` if needed
 2. Edit `node-version` if needed
 2. Edit `publish-store` if needed
 
@@ -129,9 +132,13 @@ To integrate the release workflow system into a repository, follow these steps t
 Once these workflows are set up, your repository will automatically follow the structured release process!
 
 ---
-## Recovering from a Failed Release CI
+## Recovering from a Failed Release CI, or Closing a Release
 
-If the release CI fails and does not recover automatically, follow these steps to reset the release process:
+If a workflow fails, rerunning the workflow is safe to do and may solve the problem.
+
+If you want to cleanup an inflight release, the best way is to close the release branch that was create. If there was no release branch create, then there is nothing to cleanup.
+
+Closing the release branch will do these 3 steps: delete the GitHub Release, delete the pull request for the release, delete the release branch. You can do these steps manaully by following the instructions below:
 
 1. **Delete the GitHub Release**
    - Go to the **Releases** section of your repository.
@@ -149,9 +156,3 @@ If the release CI fails and does not recover automatically, follow these steps t
    - Delete the branch.
 
 _Note there is a [workflow template: Delete Release](https://github.com/rokucommunity/.github/blob/master/workflow-templates/delete-release.yml) that does all three steps_
-
----
-## Command Line
-
-How would the command line work in each repository? The repos won't have the Reusable CI scripts.
-
