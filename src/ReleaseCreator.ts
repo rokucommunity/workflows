@@ -524,7 +524,7 @@ export class ReleaseCreator {
                     owner: this.ORG,
                     repo: options.projectName,
                     pull_number: pullRequest.number,
-                    title: !pullRequest.title.startsWith(`(Abandoned)`) ? `(Abandoned) ${pullRequest.title}` : pullRequest.title
+                    title: !pullRequest.title.endsWith(`(Abandoned)`) ? `${pullRequest.title} (Abandoned)` : pullRequest.title
                 });
                 logger.log(`Update pull request title ${pullRequest.number}`);
             } catch (error) {
