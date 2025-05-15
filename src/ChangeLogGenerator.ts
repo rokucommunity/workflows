@@ -206,7 +206,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         Deprecated: ['deprecate', 'deprecates', 'deprecated'],
         Fixed: ['fix', 'fixes', 'fixed', 'resolve', 'resolves', 'resolved'],
         Removed: ['remove', 'removes', 'removed', 'delete', 'deletes', 'deleted'],
-        Chore: ['chore']
+        Chore: ['chore', '(chore)']
     };
 
     private getChangelogHeaderForMessage(commitMessage: string): ChangelogSection | undefined {
