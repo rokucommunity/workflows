@@ -96,6 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         const sectionMap: Record<ChangelogSection, string[]> = {
             Added: [],
             Changed: [],
+            Deprecated: [],
             Fixed: [],
             Removed: [],
             Chore: []
@@ -201,11 +202,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     }
 
     private keywordToSectionMap: Record<ChangelogSection, string[]> = {
-        Added: ['add', 'added', 'new', 'create', 'created'],
-        Changed: ['change', 'changed', 'update', 'updated'],
-        Fixed: ['fix', 'fixed', 'resolve', 'resolved'],
-        Removed: ['remove', 'removed', 'delete', 'deleted', 'deprecate'],
-        Chore: ['chore']
+        Added: ['add', 'adds', 'added', 'new', 'create', 'creates', 'created'],
+        Changed: ['change', 'changes', 'changed', 'update', 'updates', 'updated'],
+        Deprecated: ['deprecate', 'deprecates', 'deprecated'],
+        Fixed: ['fix', 'fixes', 'fixed', 'resolve', 'resolves', 'resolved'],
+        Removed: ['remove', 'removes', 'removed', 'delete', 'deletes', 'deleted'],
+        Chore: ['chore', '(chore)']
     };
 
     private getChangelogHeaderForMessage(commitMessage: string): ChangelogSection | undefined {
@@ -221,4 +223,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     }
 }
 
-type ChangelogSection = 'Added' | 'Changed' | 'Fixed' | 'Removed' | 'Chore';
+type ChangelogSection = 'Added' | 'Changed' | 'Deprecated' | 'Fixed' | 'Removed' | 'Chore';
