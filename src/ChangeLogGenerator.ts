@@ -96,6 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         const sectionMap: Record<ChangelogSection, string[]> = {
             Added: [],
             Changed: [],
+            Deprecated: [],
             Fixed: [],
             Removed: [],
             Chore: []
