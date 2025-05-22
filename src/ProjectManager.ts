@@ -159,7 +159,13 @@ export class ProjectManager {
         if (!output) {
             return '';
         }
-        return JSON.parse(output)?.[dependencyType]?.[packageName].replace(/^[\^~]/, '') ?? '';
+        const packageJson = JSON.parse(output);
+        if (packageJson.dependecies === undefined) {
+            return packageJson.dependencies?.[packageName]?.replace(/^[\^~]/, '') ?? '';
+        } else if (packageJson.devDependecies === undefined) {
+            return packageJson.devDependencies?.[packageName]?.replace(/^[\^~]/, '') ?? '';
+        }
+        return '';
     }
 
     public static innerInstallDependencies(project: Project, latestReleaseVersion: string, installDependencies: boolean) {
