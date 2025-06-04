@@ -447,24 +447,23 @@ export class ReleaseCreator {
                 const versions = utils.executeCommandWithOutput(`npx @vscode/vsce show ${vsceName} --json`).toString();
                 const json = JSON.parse(versions);
                 if (!(json.versions.find((version: any) => version.version === releaseVersion))) {
-                    logger.inLog(`Publishing ${artifactName} to vscode`);
+                    logger.inLog(`Publishing ${artifactName} to VSCode Marketplace`);
                     utils.executeCommand(`npx vsce publish --packagePath ${artifactName} -p ${process.env.VSCE_TOKEN}`, { cwd: project.dir });
                 } else {
-                    logger.inLog(`Version ${releaseVersion} already exists in vscode`);
+                    logger.inLog(`Version ${releaseVersion} already exists in VSCode Marketplace`);
                 }
             }
-            { //Scope for open-vsx
+            { //Scope for OpenVSX
                 const response = utils.executeCommandWithOutput(`curl -s "https://open-vsx.org/api/-/query?extensionId=${vsceName}"`);
                 const json = JSON.parse(response);
                 const versions = json?.extensions[0]?.allVersions ?? {};
                 if (!(releaseVersion in versions)) {
-                    logger.inLog(`Publishing ${artifactName} to open - vsx`);
-                    utils.executeCommand(`npx ovsx publish --packagePath ${artifactName} -p ${process.env.OPEN_VSX_TOKEN} --debug`, { cwd: project.dir });
+                    logger.inLog(`Publishing ${artifactName} to OpenVSX Registry`);
+                    utils.executeCommand(`npx ovsx publish --packagePath "${artifactName}" --pat ${process.env.OPEN_VSX_TOKEN} --debug`, { cwd: project.dir });
                 } else {
-                    logger.inLog(`Version ${releaseVersion} already exists in open-vsx`);
+                    logger.inLog(`Version ${releaseVersion} already exists in OpenVSX Registry`);
                 }
             }
-
         }
 
         logger.log(`Get the pull request for release ${releaseVersion}`);
