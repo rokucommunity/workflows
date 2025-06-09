@@ -160,12 +160,8 @@ export class ProjectManager {
             return '';
         }
         const packageJson = JSON.parse(output);
-        if (packageJson.dependecies === undefined) {
-            return packageJson.dependencies?.[packageName]?.replace(/^[\^~]/, '') ?? '';
-        } else if (packageJson.devDependecies === undefined) {
-            return packageJson.devDependencies?.[packageName]?.replace(/^[\^~]/, '') ?? '';
-        }
-        return '';
+        const dependencyVersion = packageJson?.dependencies?.[packageName] || packageJson?.devDependencies?.[packageName];
+        return dependencyVersion ? dependencyVersion.replace(/^[\^~]/, '') : '';
     }
 
     public static innerInstallDependencies(project: Project, latestReleaseVersion: string, installDependencies: boolean) {
