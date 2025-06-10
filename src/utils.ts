@@ -53,7 +53,7 @@ export class utils {
         if (this.isVerbose()) {
             logger.inLog(`Executing ${command} with ${JSON.stringify(options)}`);
         }
-        const response = execSync(command, options);
+        const response = execute(command, options);
         if (this.isVerbose()) {
             console.log(response.toString().trim());
         }
@@ -65,7 +65,7 @@ export class utils {
             if (this.isVerbose()) {
                 logger.inLog(`Executing ${command} with ${JSON.stringify(options)} and checking for success`);
             }
-            let response = execSync(command, options)?.toString().trim();
+            let response = execute(command, options)?.toString().trim();
             if (this.isVerbose()) {
                 console.log(response);
             }
@@ -80,7 +80,7 @@ export class utils {
         if (this.isVerbose()) {
             logger.inLog(`Executing ${command} with ${JSON.stringify(options)}`);
         }
-        const response = execSync(command, options).toString().trim();
+        const response = execute(command, options).toString().trim();
         if (this.isVerbose()) {
             console.log(response);
         }
@@ -173,6 +173,26 @@ export class utils {
             clearTimeout(handle);
         };
         return promise;
+    }
+}
+
+function execute(command: string, options?: any) {
+    try {
+        return execSync(command, options);
+    } catch (error) {
+        const stderr = error.stderr ? error.stderr.toString() : '';
+        const stdout = error.stdout ? error.stdout.toString() : '';
+        const status = error.status ?? 'unknown';
+
+        const indent = '    ';
+        const message = [
+            `\n${indent}Command: ${command}`,
+            utils.isVerbose() && `Options: ${options ? `\n${indent}${indent}` + JSON.stringify(options) : 'none'}`,
+            `Exit code: ${status}`,
+            stderr && `Error output:\n${indent}${indent}${stderr}`,
+            stdout && `Standard output:\n${indent}${indent}${stdout}`
+        ].filter(Boolean).join(`\n${indent}`);
+        throw new Error(message);
     }
 }
 
