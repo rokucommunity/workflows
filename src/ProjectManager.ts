@@ -194,6 +194,17 @@ export class ProjectManager {
                         }
                     }
 
+                    const installVesrionString = utils.executeCommandWithOutput(`npm show ${dependency.name}@${installVersion} version`, { cwd: project.dir });
+                    if (utils.isVersion(dependency.previousReleaseVersion) &&
+                        (!installVesrionString || semver.valid(installVesrionString) === null || semver.lt(installVesrionString, dependency.previousReleaseVersion))
+                    ) {
+                        if (!installVesrionString || semver.valid(installVesrionString) === null) {
+                            logger.log(`No valid version found for ${dependency.name}@${installVersion}. Using previous release version ${dependency.previousReleaseVersion}`);
+                        } else {
+                            logger.log(`Downgrading ${dependency.name} from ${installVesrionString} to ${dependency.previousReleaseVersion} is not allowed. Skipping installation.`);
+                        }
+                        continue;
+                    }
                     utils.executeCommand(`npm install ${dependency.name}@${installVersion}`, { cwd: project.dir });
 
                     dependency.newVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
