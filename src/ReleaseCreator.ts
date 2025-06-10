@@ -494,9 +494,9 @@ export class ReleaseCreator {
 
         const project = await ProjectManager.initialize({ ...options, installDependencies: false });
 
-        logger.log(`Checkout the release ${options.ref}`);
-        utils.executeCommand(`git checkout --quiet ${options.ref}`, { cwd: project.dir });
-        const releaseVersion = await this.getVersion(project.dir);
+        logger.log(`Get the release version from the ref ${options.ref}`);
+        const match = /^release\/(\d+\.\d+\.\d+)$/.exec(options.ref);
+        const releaseVersion = match?.[1];
 
         logger.log(`Find the existing draft release`);
         const releases = await this.listGitHubReleases(options.projectName);
