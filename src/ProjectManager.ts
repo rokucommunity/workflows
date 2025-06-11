@@ -161,7 +161,7 @@ export class ProjectManager {
         }
         const packageJson = JSON.parse(output);
         const dependencyVersion = packageJson?.dependencies?.[packageName] || packageJson?.devDependencies?.[packageName];
-        return dependencyVersion ? dependencyVersion.replace(/^[\^~]/, '') : '';
+        return dependencyVersion ? dependencyVersion.replace(/^(>=|<=|>|<|=|\^|~)/, '') : '';
     }
 
     public static innerInstallDependencies(project: Project, latestReleaseVersion: string, installDependencies: boolean) {

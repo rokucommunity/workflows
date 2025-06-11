@@ -169,6 +169,12 @@ export class ReleaseCreator {
 
         const releaseVersion = await this.getVersion(project.dir);
 
+        logger.log(`Get artifacts from the build`);
+        const artifacts = fastGlob.sync(options.artifactPaths, { absolute: false });
+        if (artifacts.length === 0) {
+            throw new Error(`No artifacts found in ${options.artifactPaths}`);
+        }
+
         logger.log(`Find the existing release ${releaseVersion}`);
         let releases = await this.listGitHubReleases(options.projectName);
         let draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
@@ -207,8 +213,6 @@ export class ReleaseCreator {
             }
         }
 
-        logger.log(`Get artifacts from the build`);
-        const artifacts = fastGlob.sync(options.artifactPaths, { absolute: false });
         let duplicateArtifacts: string[] = [];
 
         logger.log(`Uploading artifacts`);
@@ -262,7 +266,6 @@ export class ReleaseCreator {
                         draft: false
                     });
                 }
-
 
                 await uploadAsset(fileName, temporaryReleaseBucket.id, options);
             };
@@ -330,15 +333,17 @@ export class ReleaseCreator {
         const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         const duplicateArtifactName = this.getArtifactName(duplicateArtifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         logger.log(`Artifact name: ${artifactName}`);
-        let npm;
+        let npm: PullRequestBodyInstallMessage | undefined;
+        let vsix: PullRequestBodyInstallMessage | undefined;
         const tag = draftRelease.html_url.split('/').pop();
         const duplicateDownloadLink = `https://github.com/rokucommunity/${options.projectName}/releases/download/${this.temporaryBucketTagName}/${duplicateArtifactName}`;
-        const npmCommand = `https://github.com/rokucommunity/${options.projectName}/releases/download/${this.temporaryBucketTagName}/${duplicateArtifactName}`;
         if (path.extname(artifactName) === '.tgz') {
-            npm = {};
             npm.downloadLink = duplicateDownloadLink;
             npm.sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
-            npm.command = `\`\`\`bash\nnpm install ${npmCommand}\n\`\`\``;
+            npm.command = `\`\`\`bash\nnpm install ${duplicateDownloadLink}\n\`\`\``;
+        } else if (path.extname(artifactName) === '.vsix') {
+            vsix.downloadLink = duplicateDownloadLink;
+            vsix.sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
         }
         let body = this.makePullRequestBody({
             ...options,
@@ -347,6 +352,7 @@ export class ReleaseCreator {
             prevReleaseVersion: prevReleaseVersion,
             isDraft: true,
             npm: npm,
+            vsix: vsix,
             prNumber: pullRequest.number
         });
         logger.log(`Update the pull request with the release link and edit changelog link`);
@@ -681,11 +687,8 @@ export class ReleaseCreator {
         releaseVersion?: string;
         prevReleaseVersion?: string;
         isDraft: boolean;
-        npm?: {
-            sha: string;
-            downloadLink: string;
-            command: string;
-        };
+        npm?: PullRequestBodyInstallMessage;
+        vsix?: PullRequestBodyInstallMessage;
         prNumber?: number;
     }) {
         if (options.isDraft) {
@@ -699,7 +702,8 @@ export class ReleaseCreator {
                 `${options.githubReleaseLink ? `- [GitHub Draft Release](${options.githubReleaseLink})\n` : ''}`,
                 `- [Edit changelog](${editChangeLogLink})\n`,
                 `- [See what's changed](${whatsChangeLink})`,
-                `${options.npm ? `\n\nClick [here](${options.npm.downloadLink}) to download a temporary npm package based on ${options.npm.sha}, or install with this command:\n ${options.npm.command}` : ''}`
+                `${options.npm ? `\n\nClick [here](${options.npm.downloadLink}) to download a temporary npm package based on ${options.npm.sha}, or install with this command:\n ${options.npm.command}` : ''}`,
+                `${options.vsix ? `\n\nClick [here](${options.vsix.downloadLink}) to download the .vsix based on ${options.vsix.sha}. Then follow [these installation instructions](https://rokucommunity.github.io/vscode-brightscript-language/prerelease-versions.html).` : ''}`
             ].join('');
         } else {
             const changeLogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/v${options.releaseVersion}/CHANGELOG.md`;
@@ -742,4 +746,10 @@ export class ReleaseCreator {
         return artifactName.replace(/(\.[^.]+)$/, `-${branch.replace('/', '_')}.${date}$1`);
     }
 
+}
+
+interface PullRequestBodyInstallMessage {
+    downloadLink: string;
+    sha: string;
+    command?: string;
 }
