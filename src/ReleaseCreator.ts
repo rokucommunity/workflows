@@ -333,17 +333,15 @@ export class ReleaseCreator {
         const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         const duplicateArtifactName = this.getArtifactName(duplicateArtifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         logger.log(`Artifact name: ${artifactName}`);
-        let npm;
-        let vsix;
+        let npm: PullRequestBodyInstallMessage | undefined;
+        let vsix: PullRequestBodyInstallMessage | undefined;
         const tag = draftRelease.html_url.split('/').pop();
         const duplicateDownloadLink = `https://github.com/rokucommunity/${options.projectName}/releases/download/${this.temporaryBucketTagName}/${duplicateArtifactName}`;
         if (path.extname(artifactName) === '.tgz') {
-            npm = {};
             npm.downloadLink = duplicateDownloadLink;
             npm.sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
             npm.command = `\`\`\`bash\nnpm install ${duplicateDownloadLink}\n\`\`\``;
         } else if (path.extname(artifactName) === '.vsix') {
-            vsix = {};
             vsix.downloadLink = duplicateDownloadLink;
             vsix.sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
         }
@@ -354,6 +352,7 @@ export class ReleaseCreator {
             prevReleaseVersion: prevReleaseVersion,
             isDraft: true,
             npm: npm,
+            vsix: vsix,
             prNumber: pullRequest.number
         });
         logger.log(`Update the pull request with the release link and edit changelog link`);
@@ -688,15 +687,8 @@ export class ReleaseCreator {
         releaseVersion?: string;
         prevReleaseVersion?: string;
         isDraft: boolean;
-        npm?: {
-            sha: string;
-            downloadLink: string;
-            command: string;
-        };
-        vsix?: {
-            sha: string;
-            downloadLink: string;
-        };
+        npm?: PullRequestBodyInstallMessage;
+        vsix?: PullRequestBodyInstallMessage;
         prNumber?: number;
     }) {
         if (options.isDraft) {
@@ -754,4 +746,10 @@ export class ReleaseCreator {
         return artifactName.replace(/(\.[^.]+)$/, `-${branch.replace('/', '_')}.${date}$1`);
     }
 
+}
+
+interface PullRequestBodyInstallMessage {
+    downloadLink: string;
+    sha: string;
+    command?: string;
 }
