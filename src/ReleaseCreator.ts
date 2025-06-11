@@ -169,6 +169,12 @@ export class ReleaseCreator {
 
         const releaseVersion = await this.getVersion(project.dir);
 
+        logger.log(`Get artifacts from the build`);
+        const artifacts = fastGlob.sync(options.artifactPaths, { absolute: false });
+        if (artifacts.length === 0) {
+            throw new Error(`No artifacts found in ${options.artifactPaths}`);
+        }
+
         logger.log(`Find the existing release ${releaseVersion}`);
         let releases = await this.listGitHubReleases(options.projectName);
         let draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
@@ -207,8 +213,6 @@ export class ReleaseCreator {
             }
         }
 
-        logger.log(`Get artifacts from the build`);
-        const artifacts = fastGlob.sync(options.artifactPaths, { absolute: false });
         let duplicateArtifacts: string[] = [];
 
         logger.log(`Uploading artifacts`);
@@ -262,7 +266,6 @@ export class ReleaseCreator {
                         draft: false
                     });
                 }
-
 
                 await uploadAsset(fileName, temporaryReleaseBucket.id, options);
             };
