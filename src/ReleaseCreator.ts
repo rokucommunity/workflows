@@ -334,14 +334,18 @@ export class ReleaseCreator {
         const duplicateArtifactName = this.getArtifactName(duplicateArtifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         logger.log(`Artifact name: ${artifactName}`);
         let npm;
+        let vsix;
         const tag = draftRelease.html_url.split('/').pop();
         const duplicateDownloadLink = `https://github.com/rokucommunity/${options.projectName}/releases/download/${this.temporaryBucketTagName}/${duplicateArtifactName}`;
-        const npmCommand = `https://github.com/rokucommunity/${options.projectName}/releases/download/${this.temporaryBucketTagName}/${duplicateArtifactName}`;
         if (path.extname(artifactName) === '.tgz') {
             npm = {};
             npm.downloadLink = duplicateDownloadLink;
             npm.sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
-            npm.command = `\`\`\`bash\nnpm install ${npmCommand}\n\`\`\``;
+            npm.command = `\`\`\`bash\nnpm install ${duplicateDownloadLink}\n\`\`\``;
+        } else if (path.extname(artifactName) === '.vsix') {
+            vsix = {};
+            vsix.downloadLink = duplicateDownloadLink;
+            vsix.sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
         }
         let body = this.makePullRequestBody({
             ...options,
@@ -689,6 +693,10 @@ export class ReleaseCreator {
             downloadLink: string;
             command: string;
         };
+        vsix?: {
+            sha: string;
+            downloadLink: string;
+        };
         prNumber?: number;
     }) {
         if (options.isDraft) {
@@ -702,7 +710,8 @@ export class ReleaseCreator {
                 `${options.githubReleaseLink ? `- [GitHub Draft Release](${options.githubReleaseLink})\n` : ''}`,
                 `- [Edit changelog](${editChangeLogLink})\n`,
                 `- [See what's changed](${whatsChangeLink})`,
-                `${options.npm ? `\n\nClick [here](${options.npm.downloadLink}) to download a temporary npm package based on ${options.npm.sha}, or install with this command:\n ${options.npm.command}` : ''}`
+                `${options.npm ? `\n\nClick [here](${options.npm.downloadLink}) to download a temporary npm package based on ${options.npm.sha}, or install with this command:\n ${options.npm.command}` : ''}`,
+                `${options.vsix ? `\n\nClick [here](${options.vsix.downloadLink}) to download the .vsix based on ${options.vsix.sha}. Then follow [these installation instructions](https://rokucommunity.github.io/vscode-brightscript-language/prerelease-versions.html).` : ''}`
             ].join('');
         } else {
             const changeLogLink = `https://github.com/${this.ORG}/${options.projectName}/blob/v${options.releaseVersion}/CHANGELOG.md`;
