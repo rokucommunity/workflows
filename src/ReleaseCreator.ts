@@ -338,10 +338,12 @@ export class ReleaseCreator {
         const tag = draftRelease.html_url.split('/').pop();
         const duplicateDownloadLink = `https://github.com/rokucommunity/${options.projectName}/releases/download/${this.temporaryBucketTagName}/${duplicateArtifactName}`;
         if (path.extname(artifactName) === '.tgz') {
+            npm = {} as PullRequestBodyInstallMessage;
             npm.downloadLink = duplicateDownloadLink;
             npm.sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
             npm.command = `\`\`\`bash\nnpm install ${duplicateDownloadLink}\n\`\`\``;
         } else if (path.extname(artifactName) === '.vsix') {
+            vsix = {} as PullRequestBodyInstallMessage;
             vsix.downloadLink = duplicateDownloadLink;
             vsix.sha = utils.executeCommandWithOutput('git rev-parse --short HEAD', { cwd: project.dir }).toString().trim();
         }
