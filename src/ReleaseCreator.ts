@@ -284,6 +284,10 @@ export class ReleaseCreator {
 
         logger.log(`Get the pull request for release ${releaseVersion}`);
         const pullRequest = await this.getPullRequest(options.projectName, releaseVersion);
+        if (!pullRequest) {
+            logger.log(`No pull request found for release ${releaseVersion}, skipping changelog patch notes update`);
+            return;
+        }
 
         logger.log(`Get the changelog file patch from the pull request`);
         const { data: files } = await this.octokit.rest.pulls.listFiles({
