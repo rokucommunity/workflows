@@ -28,7 +28,8 @@ export const options = yargs
         return builder
             .option('branch', { type: 'string', description: 'The release branch to checkout' })
             .option('projectName', { type: 'string', description: 'The name of the project to create the release for' })
-            .option('artifactPaths', { type: 'string', description: 'The glob pattern used to get release artifact(s)' });
+            .option('artifactPaths', { type: 'string', description: 'The glob pattern used to get release artifact(s)' })
+            .option('force', { type: 'boolean', description: 'Always upload artifacts to GitHub release' });
     }, (argv) => {
         argv = preSetup(argv);
         new ReleaseCreator().makeReleaseArtifacts(argv).catch(e => {
