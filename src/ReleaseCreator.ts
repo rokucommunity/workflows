@@ -158,7 +158,7 @@ export class ReleaseCreator {
      * Replaces the release artifacts to the GitHub release
      * and add the changelog patch to the release notes
      */
-    public async makeReleaseArtifacts(options: { branch: string; projectName: string; artifactPaths: string; testRun?: boolean }) {
+    public async makeReleaseArtifacts(options: { branch: string; projectName: string; artifactPaths: string; force: boolean; testRun?: boolean }) {
         logger.log(`Upload release... artifactPaths: ${options.artifactPaths}`);
         logger.increaseIndent();
 
@@ -180,8 +180,6 @@ export class ReleaseCreator {
         let draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
         if (!draftRelease) {
             throw new Error(`Release ${releaseVersion} does not exist`);
-        } else if (draftRelease.draft === false) {
-            throw new Error(`Release ${releaseVersion} already published`);
         }
         logger.log(`Found release ${releaseVersion}`);
 
@@ -194,6 +192,11 @@ export class ReleaseCreator {
             });
             return result;
         });
+
+        // Throw an error if the release is already published and has assets, unless --force is specified
+        if (draftRelease.draft === false && assets.length > 0 && !options.force) {
+            throw new Error(`Release ${releaseVersion} already published with assets. Use --force to overwrite the assets.`);
+        }
         logger.log(`Delete all release assets for ${options.projectName}`);
         for (const asset of assets) {
             if (options.testRun) {
