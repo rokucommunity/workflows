@@ -15,6 +15,11 @@ on:
             type: string
             description: "The glob patters to find the release artifacts"
             required: true
+        force:
+            type: boolean
+            description: "Force upload the assets even if the release already is published with assets"
+            required: false
+            default: false
         workflows-ref:
             type: string
             description: "The ref to run the workflow"
