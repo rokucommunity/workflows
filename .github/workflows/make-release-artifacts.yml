@@ -80,4 +80,5 @@ jobs:
             make-release-artifacts \
             --branch "${{ inputs.branch }}" \
             --projectName "${{ github.repository }}" \
-            --artifactPaths ${{ inputs.artifact-paths }}
+            --artifactPaths ${{ inputs.artifact-paths }} \
+            --force ${{ inputs.force }}
