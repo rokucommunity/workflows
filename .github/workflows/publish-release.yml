@@ -47,6 +47,15 @@ jobs:
             echo "RUNNER_DEBUG=false" >> $GITHUB_ENV
           fi
 
+      - name: Printing command to run locally
+        run: |
+          echo 'npx ts-node src/cli.ts \
+            publish-release \
+            --projectName "${{ github.repository }}" \
+            --ref ${{ inputs.ref }} \
+            --releaseType ${{ inputs.release-type }} \
+            --testRun'
+
       - name: Run publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -88,6 +97,14 @@ jobs:
           else
             echo "RUNNER_DEBUG=false" >> $GITHUB_ENV
           fi
+
+      - name: Printing command to run locally
+        run: |
+          echo 'npx ts-node src/cli.ts \
+            close-release \
+            --projectName "${{ github.repository }}" \
+            --ref ${{ github.event.pull_request.head.ref }}
+            --testRun'
 
       - name: Run close
         env:
