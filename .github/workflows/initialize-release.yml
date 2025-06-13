@@ -61,6 +61,17 @@ jobs:
             echo "RUNNER_DEBUG=false" >> $GITHUB_ENV
           fi
 
+      - name: Printing command to run locally
+        run: |
+          echo 'npx ts-node src/cli.ts \
+            initialize-release \
+            --projectName "${{ github.repository }}" \
+            --releaseType "${{ inputs.releaseType }}" \
+            --branch "${{ github.sha }}" \
+            --customVersion "${{ inputs.customVersion }}" \
+            --installDependencies "${{ inputs.installDependencies == 'true' }}" \
+            --testRun'
+
       - name: Run initialize
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}

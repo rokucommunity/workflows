@@ -72,6 +72,16 @@ jobs:
             echo "RUNNER_DEBUG=false" >> $GITHUB_ENV
           fi
 
+      - name: Printing command to run locally
+        run: |
+          echo 'npx ts-node src/cli.ts \
+            make-release-artifacts \
+            --branch "${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.event.pull_request.head.sha }}" \
+            --projectName "${{ github.repository }}" \
+            --artifactPaths ${{ inputs.artifact-paths }} \
+            --force ${{ inputs.force }} \
+            --testRun'
+
       - name: Run make artifacts
         env:
           GH_TOKEN: ${{ github.token }}
