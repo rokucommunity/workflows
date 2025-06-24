@@ -1,0 +1,28 @@
+name: Audit Open Releases
+
+on:
+  workflow_dispatch:
+
+jobs:
+  audit-open-releases:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the rokucommunity/workflows repo
+        uses: actions/checkout@master
+        with:
+          repository: rokucommunity/workflows
+
+      - name: get RokuCommunity bot token #so the bot's name shows up on all our actions
+        uses: tibdex/github-app-token@v1
+        id: generate-token
+        with:
+          app_id: ${{ secrets.BOT_APP_ID }}
+          private_key: ${{ secrets.BOT_PRIVATE_KEY }}`
+
+      - name: Run Audit Open Releases
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          DEBUG_LOGGING: ${{ env.RUNNER_DEBUG }}
+        run: |
+          npx ts-node src/cli.ts \
+            audit-open-releases

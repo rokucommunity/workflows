@@ -2,6 +2,7 @@
 import * as yargs from 'yargs';
 import * as dotenv from 'dotenv';
 import { ReleaseCreator } from './ReleaseCreator';
+import { run as AuditOpenReleases } from './AuditOpenReleases';
 import { logger } from './utils';
 
 export const options = yargs
@@ -66,6 +67,15 @@ export const options = yargs
     }, (argv) => {
         argv = preSetup(argv);
         new ReleaseCreator().deleteRelease(argv).catch(e => {
+            console.error(e);
+            process.exit(1);
+        });
+    })
+    .command('audit-open-releases', 'Check a whitelist of repos for stale release pull requests', (builder) => {
+        return builder;
+    }, (argv) => {
+        dotenv.config();
+        AuditOpenReleases().catch(e => {
             console.error(e);
             process.exit(1);
         });
