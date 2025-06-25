@@ -10,6 +10,11 @@ import { DateTime } from 'luxon';
 const tempDir = s`${__dirname}/../.tmp/.releases`;
 
 export async function run() {
+    await auditChangeLogDate();
+}
+
+async function auditChangeLogDate() {
+
     logger.log('Running Audit Open Releases...');
     logger.increaseIndent();
 
