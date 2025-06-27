@@ -37,7 +37,7 @@ async function auditChangeLogDate() {
     const today = DateTime.now().setZone('America/New_York').toISODate();
 
     for (const repo of repositories) {
-        const releases = await getReleasePullRequests('release-testing');
+        const releases = await getReleasePullRequests(repo);
         logger.log(`Found ${releases.length} open release pull requests in ${repo}`);
         logger.increaseIndent();
         for (const release of releases) {
