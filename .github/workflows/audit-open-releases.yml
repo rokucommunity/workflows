@@ -15,6 +15,9 @@ jobs:
         with:
           repository: rokucommunity/workflows
 
+      - name: Run npm ci
+        run: npm ci
+
       - name: get RokuCommunity bot token #so the bot's name shows up on all our actions
         uses: tibdex/github-app-token@v1
         id: generate-token
