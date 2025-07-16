@@ -117,7 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         for (const dependency of [...project.dependencies, ...project.devDependencies]) {
             if (!utils.isVersion(dependency.previousReleaseVersion)) {
                 sectionMap.Added.push(` - added [${dependency.name}@${dependency.newVersion}](${ProjectManager.getProject(dependency.repoName).repositoryUrl})`);
-            } else if (dependency.previousReleaseVersion !== dependency.newVersion) {
+            } else if (dependency.hasChanged()) {
                 const dependencyProject = ProjectManager.getProject(dependency.repoName);
                 if (semver.gt(dependency.newVersion, dependency.previousReleaseVersion)) {
                     sectionMap.Changed.push(
@@ -155,6 +155,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
         return lines;
     }
+
     private computeChanges(project: Project) {
         project.changes.push(
             ...this.getCommitLogs(project.name, project.lastTag, 'HEAD')
@@ -162,7 +163,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         //get commits from any changed dependencies
         for (const dependency of [...project.dependencies, ...project.devDependencies]) {
             //the dependency has changed
-            if (dependency.previousReleaseVersion !== dependency.newVersion) {
+            if (dependency.hasChanged()) {
                 project.changes.push(
                     ...this.getCommitLogs(dependency.repoName, dependency.previousReleaseVersion, dependency.newVersion)
                 );
