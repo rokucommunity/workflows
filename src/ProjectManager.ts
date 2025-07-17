@@ -122,7 +122,7 @@ export class ProjectManager {
                 let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
                 if (foundDependency) {
                     projectsToClone.push(ProjectManager.getProject(foundDependency.repoName));
-                    project.dependencies.push({ name: dependency, repoName: foundDependency.repoName, previousReleaseVersion: '', newVersion: '' });
+                    project.dependencies.push(new ProjectDependency(dependency, foundDependency.repoName, '', ''));
                 }
             });
         }
@@ -131,7 +131,7 @@ export class ProjectManager {
                 let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
                 if (foundDependency) {
                     projectsToClone.push(ProjectManager.getProject(foundDependency.repoName));
-                    project.devDependencies.push({ name: dependency, repoName: foundDependency.repoName, previousReleaseVersion: '', newVersion: '' });
+                    project.devDependencies.push(new ProjectDependency(dependency, foundDependency.repoName, '', ''));
                 }
             });
         }
@@ -201,7 +201,7 @@ export class ProjectManager {
                         if (!installVesrionString || semver.valid(installVesrionString) === null) {
                             logger.log(`No valid version found for ${dependency.name}@${installVersion}. Using previous release version ${dependency.previousReleaseVersion}`);
                         } else {
-                            logger.log(`Downgrading ${dependency.name} from ${installVesrionString} to ${dependency.previousReleaseVersion} is not allowed. Skipping installation.`);
+                            logger.log(`Downgrading ${dependency.name} from ${dependency.previousReleaseVersion} to ${installVesrionString} is not allowed. Skipping installation.`);
                         }
                         continue;
                     }
@@ -270,24 +270,33 @@ export class Project {
      */
     dir: string;
     version: string;
-    dependencies: Array<{
-        name: string;
-        repoName: string;
-        previousReleaseVersion: string;
-        newVersion: string;
-    }>;
-    devDependencies: Array<{
-        name: string;
-        repoName: string;
-        previousReleaseVersion: string;
-        newVersion: string;
-    }>;
+    dependencies: ProjectDependency[];
+    devDependencies: ProjectDependency[];
     /**
      * A list of changes to be included in the changelog. If non-empty, this indicates the package needs a new release
      */
     changes: Commit[];
     lastTag: string;
 }
+
+export class ProjectDependency {
+    name: string;
+    repoName: string;
+    previousReleaseVersion: string;
+    newVersion: string;
+
+    constructor(name: string, repoName: string, previousReleaseVersion: string, newVersion: string) {
+        this.name = name;
+        this.repoName = repoName;
+        this.previousReleaseVersion = previousReleaseVersion;
+        this.newVersion = newVersion;
+    }
+
+    public hasChanged() {
+        return this.previousReleaseVersion !== this.newVersion && semver.valid(this.previousReleaseVersion) && semver.valid(this.newVersion);
+    }
+}
+
 
 export interface Commit {
     hash: string;

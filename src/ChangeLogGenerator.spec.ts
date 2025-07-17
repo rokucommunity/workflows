@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { createSandbox } from 'sinon';
 import { utils } from './utils';
 import { ChangelogGenerator } from './ChangeLogGenerator';
-import { ProjectManager, Project } from './ProjectManager';
+import { ProjectManager, Project, ProjectDependency } from './ProjectManager';
 
 const sinon = createSandbox();
 const changelogGenerator = new ChangelogGenerator();
@@ -131,12 +131,12 @@ describe('Test ReleaseCreator.ts', () => {
                     repositoryUrl: '',
                     dir: '',
                     version: '',
-                    dependencies: [{
-                        name: 'testDep',
-                        previousReleaseVersion: '1.0.0',
-                        newVersion: '1.0.1',
-                        repoName: 'testDep'
-                    }],
+                    dependencies: [new ProjectDependency(
+                        'testDep',
+                        '1.0.0',
+                        '1.0.1',
+                        'testDep'
+                    )],
                     devDependencies: [],
                     changes: changes.map((change) => {
                         return { message: change, hash: '', branchInfo: '', prNumber: '' };
