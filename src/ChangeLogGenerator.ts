@@ -197,7 +197,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             //exclude version-only commit messages
             .filter(x => !semver.valid(x.message))
             //exclude those "update changelog for..." message
-            .filter(x => !x.message.toLowerCase().startsWith('update changelog for '));
+            .filter(x => !x.message.toLowerCase().startsWith('update changelog for '))
+            //exclude merge commits
+            .filter(x => !/^Merge branch '.*?' of.*?into.*?/.test(x.message));
 
         return commitMessages;
     }
