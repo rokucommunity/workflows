@@ -463,7 +463,7 @@ export class ReleaseCreator {
                 const json = JSON.parse(versions);
                 if (!(json.versions.find((version: any) => version.version === releaseVersion))) {
                     logger.inLog(`Publishing ${artifactName} to VSCode Marketplace`);
-                    utils.executeCommand(`npx vsce publish --packagePath ${artifactName} -p ${process.env.VSCE_TOKEN}`, { cwd: project.dir });
+                    utils.executeCommand(`npx @vscode/vsce publish --packagePath ${artifactName} -p ${process.env.VSCE_TOKEN}`, { cwd: project.dir });
                 } else {
                     logger.inLog(`Version ${releaseVersion} already exists in VSCode Marketplace`);
                 }

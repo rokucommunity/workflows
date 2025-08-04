@@ -51,7 +51,7 @@ export class utils {
     static executeCommand(command: string, options?: any) {
         options = { ...options, env: process.env };
         if (this.isVerbose()) {
-            logger.inLog(`Executing ${command} with ${JSON.stringify(options)}`);
+            logger.inLog(`Executing '${command}' with ${JSON.stringify(options)}`);
         }
         const response = execute(command, options);
         if (this.isVerbose()) {
@@ -63,7 +63,7 @@ export class utils {
         options = { ...options, env: process.env };
         try {
             if (this.isVerbose()) {
-                logger.inLog(`Executing ${command} with ${JSON.stringify(options)} and checking for success`);
+                logger.inLog(`Executing '${command}' with ${JSON.stringify(options)} and checking for success`);
             }
             let response = execute(command, options)?.toString().trim();
             if (this.isVerbose()) {
@@ -78,7 +78,7 @@ export class utils {
     static executeCommandWithOutput(command: string, options?: any) {
         options = { ...options, env: process.env };
         if (this.isVerbose()) {
-            logger.inLog(`Executing ${command} with ${JSON.stringify(options)}`);
+            logger.inLog(`Executing '${command}' with ${JSON.stringify(options)}`);
         }
         const response = execute(command, options).toString().trim();
         if (this.isVerbose()) {
