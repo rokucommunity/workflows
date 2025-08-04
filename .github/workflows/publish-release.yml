@@ -63,7 +63,8 @@ jobs:
           VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
           OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}
         run: |
-          npx ts-node nested-ci/src/cli.ts \
+          cd nested-ci
+          npx ts-node src/cli.ts \
             publish-release \
             --projectName "${{ github.repository }}" \
             --ref ${{ inputs.ref }} \
@@ -110,7 +111,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          npx ts-node nested-ci/src/cli.ts \
+          cd nested-ci
+          npx ts-node src/cli.ts \
             close-release \
             --projectName "${{ github.repository }}" \
             --ref ${{ github.event.pull_request.head.ref }}
