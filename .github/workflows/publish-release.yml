@@ -21,6 +21,9 @@ jobs:
   publish-release:
     if: ${{ (github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.event.repository.full_name) || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout the rokucommunity/workflows repo
         uses: actions/checkout@master
@@ -59,7 +62,6 @@ jobs:
       - name: Run publish
         env:
           GH_TOKEN: ${{ github.token }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
           OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}
         run: |
