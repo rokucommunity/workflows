@@ -451,9 +451,14 @@ export class ReleaseCreator {
             const releaseTag = semver.prerelease(releaseVersion) ? `next` : `latest`;
             if (!json.includes(releaseVersion)) {
                 logger.inLog(`Publishing ${artifactName} to npm`);
-                logger.inLog(`Env: ${JSON.stringify(process.env)}`);
-                logger.inLog(utils.executeCommandWithOutput(`ls -la`));
-                logger.inLog(utils.executeCommandWithOutput(`ls -la ../`));
+                logger.inLog(`HOME dir: ${process.env.HOME}`);
+                logger.inLog(`Checking for .npmrc in home:`);
+                logger.inLog(utils.executeCommandWithOutput(`ls -la $HOME/.npmrc || echo "No .npmrc in home"`));
+                logger.inLog(`Checking for .npmrc in project dir:`);
+                logger.inLog(utils.executeCommandWithOutput(`ls -la .npmrc || echo "No .npmrc in project dir"`, { cwd: project.dir }));
+                logger.inLog(`npm config list:`);
+                logger.inLog(utils.executeCommandWithOutput(`npm config list`, { cwd: project.dir }));
+                logger.inLog(`NODE_AUTH_TOKEN: ${process.env.NODE_AUTH_TOKEN ? 'SET' : 'NOT SET'}`);
                 utils.executeCommand(`npm publish ${artifactName} --tag ${releaseTag} --provenance`, { cwd: project.dir });
             } else {
                 logger.inLog(`Version ${releaseVersion} already exists in npm`);
