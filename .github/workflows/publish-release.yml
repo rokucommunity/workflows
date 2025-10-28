@@ -36,7 +36,6 @@ jobs:
         uses: actions/setup-node@master
         with:
           node-version: '20.19.4'
-          registry-url: 'https://registry.npmjs.org'
 
       - name: CD into nested-ci, run npm ci
         run: |

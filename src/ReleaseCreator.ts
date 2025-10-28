@@ -459,7 +459,7 @@ export class ReleaseCreator {
                 logger.inLog(`npm config list:`);
                 logger.inLog(utils.executeCommandWithOutput(`npm config list`, { cwd: project.dir }));
                 logger.inLog(`NODE_AUTH_TOKEN: ${process.env.NODE_AUTH_TOKEN ? 'SET' : 'NOT SET'}`);
-                utils.executeCommand(`npm publish ${artifactName} --tag ${releaseTag} --provenance`, { cwd: project.dir });
+                utils.executeCommand(`npm publish ${artifactName} --tag ${releaseTag}`, { cwd: project.dir });
             } else {
                 logger.inLog(`Version ${releaseVersion} already exists in npm`);
             }
