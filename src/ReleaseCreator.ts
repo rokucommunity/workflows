@@ -452,7 +452,8 @@ export class ReleaseCreator {
             if (!json.includes(releaseVersion)) {
                 logger.inLog(`Publishing ${artifactName} to npm`);
                 logger.inLog(`Env: ${JSON.stringify(process.env)}`);
-                logger.inLog(`npmrc: ${fsExtra.readFileSync(path.join(process.env.HOME || '', '.npmrc'), 'utf-8')}`);
+                utils.executeCommand(`ls -la`);
+                utils.executeCommand(`ls -la ../`);
                 utils.executeCommand(`npm publish ${artifactName} --tag ${releaseTag} --provenance`, { cwd: project.dir });
             } else {
                 logger.inLog(`Version ${releaseVersion} already exists in npm`);
