@@ -450,7 +450,6 @@ export class ReleaseCreator {
             const json = JSON.parse(versions);
             const releaseTag = semver.prerelease(releaseVersion) ? `next` : `latest`;
             if (!json.includes(releaseVersion)) {
-                utils.executeCommand(`echo "//registry.npmjs.org/:_authToken=${process.env.NPM_TOKEN}" > ./.npmrc`, { cwd: project.dir });
                 utils.executeCommand(`npm publish ${artifactName} --tag ${releaseTag}`, { cwd: project.dir });
             } else {
                 logger.inLog(`Version ${releaseVersion} already exists in npm`);

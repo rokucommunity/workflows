@@ -34,9 +34,6 @@ jobs:
         with:
           node-version: '20.19.4'
 
-      - name: echo test
-        run: echo "TEST TEST"
-
       - name: CD into nested-ci, run npm ci
         run: |
           cd nested-ci
@@ -62,7 +59,6 @@ jobs:
       - name: Run publish
         env:
           GH_TOKEN: ${{ github.token }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
           OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}
         run: |
