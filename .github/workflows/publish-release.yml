@@ -34,6 +34,9 @@ jobs:
         with:
           node-version: '20.19.4'
 
+      - name: echo test
+        run: echo "TEST TEST"
+
       - name: CD into nested-ci, run npm ci
         run: |
           cd nested-ci
