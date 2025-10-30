@@ -37,7 +37,6 @@ jobs:
         uses: actions/setup-node@master
         with:
           node-version: '20.19.4'
-          registry-url: 'https://registry.npmjs.org'
 
       - name: Update npm to support trusted publishing
         run: npm install -g npm@latest
