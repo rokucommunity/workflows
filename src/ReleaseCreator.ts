@@ -474,7 +474,8 @@ export class ReleaseCreator {
                 }
 
                 try {
-                    utils.executeCommand(`npm publish ${artifactName} --tag ${releaseTag}`, { cwd: project.dir });
+                    // Disable provenance due to case mismatch in package.json repository URL
+                    utils.executeCommand(`npm publish ${artifactName} --tag ${releaseTag} --provenance=false`, { cwd: project.dir });
                 } catch (e) {
                     // Print npm debug log to understand what's happening
                     logger.inLog('npm debug log:');
