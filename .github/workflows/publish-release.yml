@@ -39,12 +39,12 @@ jobs:
           node-version: '20.19.4'
 
       - name: Update npm to support trusted publishing
-        run: npm install -g npm@latest
+        run: npm install -g npm@11.5.1
 
       - name: CD into nested-ci, run npm install
         run: |
           cd nested-ci
-          npm install --no-audit
+          npm ci --no-audit
 
       - name: Set RUNNER_DEBUG env variable
         run: |
