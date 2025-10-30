@@ -450,38 +450,7 @@ export class ReleaseCreator {
             const json = JSON.parse(versions);
             const releaseTag = semver.prerelease(releaseVersion) ? `next` : `latest`;
             if (!json.includes(releaseVersion)) {
-                logger.inLog(`OIDC Token URL: ${process.env.ACTIONS_ID_TOKEN_REQUEST_URL ? 'SET' : 'NOT SET'}`);
-                logger.inLog(`OIDC Token: ${process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN ? 'SET' : 'NOT SET'}`);
-                logger.inLog(`npm version: ${utils.executeCommandWithOutput('npm --version', { cwd: project.dir }).toString().trim()}`);
-
-                // Fetch and decode OIDC token to see claims
-                if (process.env.ACTIONS_ID_TOKEN_REQUEST_URL && process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN) {
-                    try {
-                        const tokenResponse = await fetch(process.env.ACTIONS_ID_TOKEN_REQUEST_URL + '&audience=npm', {
-                            headers: {
-                                'Authorization': `Bearer ${process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN}`
-                            }
-                        });
-                        const tokenData = await tokenResponse.json();
-                        if (tokenData.value) {
-                            // Decode JWT (just the payload, no verification needed for debugging)
-                            const payload = JSON.parse(Buffer.from(tokenData.value.split('.')[1], 'base64').toString());
-                            logger.inLog(`OIDC Token Claims: ${JSON.stringify(payload, null, 2)}`);
-                        }
-                    } catch (e) {
-                        logger.inLog(`Failed to fetch/decode OIDC token: ${e}`);
-                    }
-                }
-
-                try {
-                    // Disable provenance due to case mismatch in package.json repository URL
-                    utils.executeCommand(`npm publish ${artifactName} --tag ${releaseTag} --provenance=false`, { cwd: project.dir });
-                } catch (e) {
-                    // Print npm debug log to understand what's happening
-                    logger.inLog('npm debug log:');
-                    logger.inLog(utils.executeCommandWithOutput('tail -50 /home/runner/.npm/_logs/*-debug-*.log 2>/dev/null || echo "No debug log found"'));
-                    throw e;
-                }
+                utils.executeCommand(`npm publish ${artifactName} --tag ${releaseTag} --provenance=false`, { cwd: project.dir });
             } else {
                 logger.inLog(`Version ${releaseVersion} already exists in npm`);
             }

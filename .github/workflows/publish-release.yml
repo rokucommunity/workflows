@@ -24,6 +24,7 @@ jobs:
     permissions:
       id-token: write
       contents: write
+      pull-requests: write
     steps:
       - name: Checkout the rokucommunity/workflows repo
         uses: actions/checkout@master
