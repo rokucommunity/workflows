@@ -452,6 +452,7 @@ export class ReleaseCreator {
             if (!json.includes(releaseVersion)) {
                 logger.inLog(`OIDC Token URL: ${process.env.ACTIONS_ID_TOKEN_REQUEST_URL ? 'SET' : 'NOT SET'}`);
                 logger.inLog(`OIDC Token: ${process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN ? 'SET' : 'NOT SET'}`);
+                logger.inLog(`npm version: ${utils.executeCommandWithOutput('npm --version', { cwd: project.dir }).toString().trim()}`);
                 utils.executeCommand(`npm publish ${artifactName} --tag ${releaseTag} --provenance --access public`, { cwd: project.dir });
             } else {
                 logger.inLog(`Version ${releaseVersion} already exists in npm`);
