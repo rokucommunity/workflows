@@ -454,6 +454,25 @@ export class ReleaseCreator {
                 logger.inLog(`OIDC Token: ${process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN ? 'SET' : 'NOT SET'}`);
                 logger.inLog(`npm version: ${utils.executeCommandWithOutput('npm --version', { cwd: project.dir }).toString().trim()}`);
 
+                // Fetch and decode OIDC token to see claims
+                if (process.env.ACTIONS_ID_TOKEN_REQUEST_URL && process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN) {
+                    try {
+                        const tokenResponse = await fetch(process.env.ACTIONS_ID_TOKEN_REQUEST_URL + '&audience=npm', {
+                            headers: {
+                                'Authorization': `Bearer ${process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN}`
+                            }
+                        });
+                        const tokenData = await tokenResponse.json();
+                        if (tokenData.value) {
+                            // Decode JWT (just the payload, no verification needed for debugging)
+                            const payload = JSON.parse(Buffer.from(tokenData.value.split('.')[1], 'base64').toString());
+                            logger.inLog(`OIDC Token Claims: ${JSON.stringify(payload, null, 2)}`);
+                        }
+                    } catch (e) {
+                        logger.inLog(`Failed to fetch/decode OIDC token: ${e}`);
+                    }
+                }
+
                 try {
                     utils.executeCommand(`npm publish ${artifactName} --tag ${releaseTag}`, { cwd: project.dir });
                 } catch (e) {
