@@ -455,7 +455,7 @@ export class ReleaseCreator {
                 logger.inLog(`npm version: ${utils.executeCommandWithOutput('npm --version', { cwd: project.dir }).toString().trim()}`);
 
                 try {
-                    utils.executeCommand(`npm publish ${artifactName} --tag ${releaseTag} --provenance --access public`, { cwd: project.dir });
+                    utils.executeCommand(`npm publish ${artifactName} --tag ${releaseTag}`, { cwd: project.dir });
                 } catch (e) {
                     // Print npm debug log to understand what's happening
                     logger.inLog('npm debug log:');
