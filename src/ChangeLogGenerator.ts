@@ -78,7 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     private getChangeLogs(project: Project, releaseVersion: string) {
         const [month, day, year] = new Date().toLocaleDateString().split('/');
 
-        function getReflink(project: Project, commit: Commit, includeProjectName = false) {
+        function getReflink(project: { name: string; repositoryUrl: string }, commit: Commit, includeProjectName = false) {
             let preHashName = includeProjectName ? project.name : undefined;
             if (commit.prNumber) {
                 return `[${preHashName ?? ''}#${commit.prNumber}](${project.repositoryUrl}/pull/${commit.prNumber})`;
@@ -129,7 +129,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
                         ].join('')
                     );
                     for (let commit of this.getCommitLogs(dependency.repoName, dependency.previousReleaseVersion, dependency.newVersion)) {
-                        sectionMap.Changed.push(`     - ${commit.message} (${getReflink(project, commit)})`);
+                        sectionMap.Changed.push(`     - ${commit.message} (${getReflink(dependency, commit)})`);
                     }
                 } else {
                     sectionMap.Changed.push(

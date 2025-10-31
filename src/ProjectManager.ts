@@ -121,8 +121,9 @@ export class ProjectManager {
             Object.keys(projectPackageJson.dependencies).forEach(dependency => {
                 let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
                 if (foundDependency) {
-                    projectsToClone.push(ProjectManager.getProject(foundDependency.repoName));
-                    project.dependencies.push(new ProjectDependency(dependency, foundDependency.repoName, '', ''));
+                    const foundProject = ProjectManager.getProject(foundDependency.repoName);
+                    projectsToClone.push(foundProject);
+                    project.dependencies.push(new ProjectDependency(dependency, foundDependency.repoName, '', '', foundProject.repositoryUrl));
                 }
             });
         }
@@ -130,8 +131,9 @@ export class ProjectManager {
             Object.keys(projectPackageJson.devDependencies).forEach(dependency => {
                 let foundDependency = projectNpmNames.find(x => x.packageName === dependency);
                 if (foundDependency) {
-                    projectsToClone.push(ProjectManager.getProject(foundDependency.repoName));
-                    project.devDependencies.push(new ProjectDependency(dependency, foundDependency.repoName, '', ''));
+                    const foundProject = ProjectManager.getProject(foundDependency.repoName);
+                    projectsToClone.push(foundProject);
+                    project.devDependencies.push(new ProjectDependency(dependency, foundDependency.repoName, '', '', foundProject.repositoryUrl));
                 }
             });
         }
@@ -284,12 +286,14 @@ export class ProjectDependency {
     repoName: string;
     previousReleaseVersion: string;
     newVersion: string;
+    repositoryUrl: string;
 
-    constructor(name: string, repoName: string, previousReleaseVersion: string, newVersion: string) {
+    constructor(name: string, repoName: string, previousReleaseVersion: string, newVersion: string, repositoryUrl: string) {
         this.name = name;
         this.repoName = repoName;
         this.previousReleaseVersion = previousReleaseVersion;
         this.newVersion = newVersion;
+        this.repositoryUrl = repositoryUrl;
     }
 
     public hasChanged() {
