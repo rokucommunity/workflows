@@ -21,6 +21,9 @@ jobs:
   publish-release:
     if: ${{ (github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.event.repository.full_name) || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
+    concurrency:
+      group: publish-release-${{ github.repository }}-${{ inputs.ref }}
+      cancel-in-progress: false
     permissions:
       id-token: write
       contents: write
@@ -62,6 +65,16 @@ jobs:
             --ref ${{ inputs.ref }} \
             --releaseType ${{ inputs.release-type }} \
             --testRun'
+
+      - name: Pre-flight check - verify assets exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd nested-ci
+          npx ts-node src/cli.ts \
+            verify-release-assets \
+            --ref "${{ inputs.ref }}" \
+            --projectName "${{ github.repository }}"
 
       - name: Run publish
         env:
