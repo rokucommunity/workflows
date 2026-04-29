@@ -30,6 +30,9 @@ jobs:
   make-release-artifacts:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.event.repository.full_name }}
     runs-on: ubuntu-latest
+    concurrency:
+      group: release-artifacts-${{ github.repository }}-${{ inputs.branch }}
+      cancel-in-progress: false
     steps:
       - name: Checkout caller repo
         uses: actions/checkout@master
@@ -92,3 +95,12 @@ jobs:
             --projectName "${{ github.repository }}" \
             --artifactPaths ${{ inputs.artifact-paths }} \
             --force ${{ inputs.force }}
+
+      - name: Verify assets uploaded
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          npx ts-node nested-ci/src/cli.ts \
+            verify-release-assets \
+            --ref "${{ inputs.branch }}" \
+            --projectName "${{ github.repository }}"

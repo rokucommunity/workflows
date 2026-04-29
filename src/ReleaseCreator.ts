@@ -69,8 +69,8 @@ export class ReleaseCreator {
 
         const releases = await this.listGitHubReleases(options.projectName);
         logger.log(`Check if a GitHub release already exists for ${releaseVersion}`);
-        if (releases.find(r => r.tag_name === releaseVersion)) {
-            utils.throwError(`Release ${releaseVersion} already exists`, options);
+        if (releases.find(r => r.tag_name === `v${releaseVersion}`)) {
+            utils.throwError(`Release v${releaseVersion} already exists`, options);
         }
 
         logger.log(`Check if a tag already exists for ${releaseVersion}`);
@@ -176,11 +176,7 @@ export class ReleaseCreator {
         }
 
         logger.log(`Find the existing release ${releaseVersion}`);
-        let releases = await this.listGitHubReleases(options.projectName);
-        let draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
-        if (!draftRelease) {
-            throw new Error(`Release ${releaseVersion} does not exist`);
-        }
+        let draftRelease = await this.assertSingleRelease(options.projectName, `v${releaseVersion}`);
         logger.log(`Found release ${releaseVersion}`);
 
         logger.log(`Get all existing release assets for ${options.projectName}`);
@@ -333,9 +329,6 @@ export class ReleaseCreator {
             body: patchNotes
         });
 
-        releases = await this.listGitHubReleases(options.projectName);
-        draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
-
         const prevReleaseVersion = ProjectManager.getPreviousVersion(releaseVersion, project.dir);
         const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         const duplicateArtifactName = this.getArtifactName(duplicateArtifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
@@ -391,22 +384,31 @@ export class ReleaseCreator {
         const releaseVersion = await this.getVersion(project.dir);
 
         logger.log(`Find the existing release ${releaseVersion}`);
-        const releases = await this.listGitHubReleases(options.projectName);
-        let draftRelease = releases.find(r => r.tag_name === `v${releaseVersion}`);
+        let draftRelease = await this.assertSingleRelease(options.projectName, `v${releaseVersion}`);
         let shouldMarkAsPublished = true;
-        if (draftRelease?.draft) {
+        if (draftRelease.draft) {
             logger.log(`Found release ${releaseVersion}`);
-        } else if (draftRelease) {
+        } else {
             shouldMarkAsPublished = false;
             logger.log(`Release ${releaseVersion} is not a draft`);
-        } else {
-            throw new Error(`Release ${releaseVersion} does not exist`);
         }
 
         if (shouldMarkAsPublished) {
             logger.log(`Remove draft status from release ${releaseVersion}`);
-            utils.executeCommand(`git tag v${releaseVersion} ${options.ref}`, { cwd: project.dir });
-            utils.executeCommand(`git push origin v${releaseVersion}`, { cwd: project.dir });
+
+            // Check if tag already exists (for idempotent re-runs)
+            const tagExists = utils.executeCommandSucceeds(
+                `git rev-parse v${releaseVersion}`,
+                { cwd: project.dir }
+            );
+
+            if (!tagExists) {
+                utils.executeCommand(`git tag v${releaseVersion} ${options.ref}`, { cwd: project.dir });
+                utils.executeCommand(`git push origin v${releaseVersion}`, { cwd: project.dir });
+            } else {
+                logger.log(`Tag v${releaseVersion} already exists, skipping tag creation`);
+            }
+
             await this.octokit.rest.repos.updateRelease({
                 owner: this.ORG,
                 repo: options.projectName,
@@ -426,6 +428,10 @@ export class ReleaseCreator {
             });
             return result;
         });
+
+        if (assets.length === 0) {
+            throw new Error(`Release v${releaseVersion} has no assets. Run make-release-artifacts first.`);
+        }
 
         for (const asset of assets) {
             logger.inLog(`Release asset: ${asset.name}`);
@@ -498,6 +504,49 @@ export class ReleaseCreator {
                 isDraft: false
             })
         });
+        logger.decreaseIndent();
+    }
+
+    /**
+     * Verifies that the release has assets uploaded.
+     * Throws an error if no assets are found.
+     */
+    public async verifyReleaseAssets(options: { projectName: string; ref: string }) {
+        logger.log(`Verify release assets...ref: ${options.ref}`);
+        logger.increaseIndent();
+
+        const project = await ProjectManager.initialize({ ...options, installDependencies: false });
+
+        logger.log(`Checkout the ref ${options.ref}`);
+        utils.executeCommand(`git checkout --quiet ${options.ref}`, { cwd: project.dir });
+
+        const releaseVersion = await this.getVersion(project.dir);
+
+        logger.log(`Find the existing release ${releaseVersion}`);
+        const release = await this.assertSingleRelease(options.projectName, `v${releaseVersion}`);
+
+        logger.log(`Get all existing release assets for ${options.projectName}`);
+        const assets = await utils.octokitPageHelper((page: number) => {
+            return this.octokit.repos.listReleaseAssets({
+                owner: this.ORG,
+                repo: options.projectName,
+                release_id: release.id
+            });
+        });
+
+        if (assets.length === 0) {
+            throw new Error(
+                `Release v${releaseVersion} has no assets!\n` +
+                `The make-release-artifacts workflow may not have completed.\n\n` +
+                `To fix: Re-run the 'Make Release Artifacts' workflow, then re-run this workflow.`
+            );
+        }
+
+        logger.log(`Found ${assets.length} asset(s) on release v${releaseVersion}`);
+        for (const asset of assets) {
+            logger.inLog(`- ${asset.name}`);
+        }
+
         logger.decreaseIndent();
     }
 
@@ -668,6 +717,29 @@ export class ReleaseCreator {
             });
         });
         return releases;
+    }
+
+    /**
+     * Asserts that exactly one release exists with the given tag name.
+     * Throws an error if no release or multiple releases are found.
+     */
+    private async assertSingleRelease(projectName: string, tagName: string) {
+        const releases = await this.listGitHubReleases(projectName);
+        const matching = releases.filter(r => r.tag_name === tagName);
+
+        if (matching.length === 0) {
+            throw new Error(`No release found with tag ${tagName}`);
+        }
+
+        if (matching.length > 1) {
+            const links = matching.map(r => `  - ${r.html_url} (draft=${r.draft}, assets=${r.assets?.length ?? 0})`).join('\n');
+            throw new Error(
+                `Found ${matching.length} releases with tag ${tagName}:\n${links}\n\n` +
+                `Please delete the duplicates and re-run the workflow.`
+            );
+        }
+
+        return matching[0];
     }
 
     private async getPullRequest(repoName: string, releaseVersion: string, state: 'open' | 'closed' = 'open') {
