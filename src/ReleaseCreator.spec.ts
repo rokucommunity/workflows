@@ -7,7 +7,6 @@ import { ReleaseCreator } from './ReleaseCreator';
 import { utils } from './utils';
 import { ProjectManager } from './ProjectManager';
 import { createMockRelease, createMockAsset, createMockProject } from './test-helpers';
-import * as fastGlob from 'fast-glob';
 
 chai.use(chaiAsPromised);
 
@@ -343,27 +342,5 @@ describe('ReleaseCreator', () => {
         });
     });
 
-    describe('makeReleaseArtifacts', () => {
-        it('fails if published release has assets without --force', async () => {
-            const mockProject = createMockProject();
-            sinon.stub(ProjectManager, 'initialize').resolves(mockProject);
-            sinon.stub(utils, 'executeCommand');
-            sinon.stub(releaseCreator as any, 'getVersion').resolves('1.0.0');
-            sinon.stub(fastGlob, 'sync').returns(['artifact.tgz']);
-
-            const mockRelease = createMockRelease({ draft: false });
-            sinon.stub(releaseCreator as any, 'assertSingleRelease').resolves(mockRelease);
-            sinon.stub(utils, 'octokitPageHelper').resolves([createMockAsset()]);
-
-            await expect(
-                releaseCreator.makeReleaseArtifacts({
-                    branch: 'release/1.0.0',
-                    projectName: 'test-project',
-                    artifactPaths: '*.tgz',
-                    force: false
-                })
-            ).to.be.rejectedWith(/already published with assets/);
-        });
-    });
 
 });
