@@ -329,8 +329,6 @@ export class ReleaseCreator {
             body: patchNotes
         });
 
-        draftRelease = await this.assertSingleRelease(options.projectName, `v${releaseVersion}`);
-
         const prevReleaseVersion = ProjectManager.getPreviousVersion(releaseVersion, project.dir);
         const artifactName = this.getArtifactName(artifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
         const duplicateArtifactName = this.getArtifactName(duplicateArtifacts, this.getAssetName(project.dir, options.artifactPaths)).split('/').pop();
@@ -544,7 +542,7 @@ export class ReleaseCreator {
             );
         }
 
-        logger.log(`✅ Found ${assets.length} asset(s) on release v${releaseVersion}`);
+        logger.log(`Found ${assets.length} asset(s) on release v${releaseVersion}`);
         for (const asset of assets) {
             logger.inLog(`- ${asset.name}`);
         }
@@ -734,9 +732,7 @@ export class ReleaseCreator {
         }
 
         if (matching.length > 1) {
-            const links = matching.map(r =>
-                `  - ${r.html_url} (draft=${r.draft}, assets=${r.assets?.length ?? 0})`
-            ).join('\n');
+            const links = matching.map(r => `  - ${r.html_url} (draft=${r.draft}, assets=${r.assets?.length ?? 0})`).join('\n');
             throw new Error(
                 `Found ${matching.length} releases with tag ${tagName}:\n${links}\n\n` +
                 `Please delete the duplicates and re-run the workflow.`
