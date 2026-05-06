@@ -135,7 +135,8 @@ describe('Test ReleaseCreator.ts', () => {
                         'testDep',
                         '1.0.0',
                         '1.0.1',
-                        'testDep'
+                        'testDep',
+                        ''
                     )],
                     devDependencies: [],
                     changes: changes.map((change) => {
