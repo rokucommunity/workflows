@@ -106,28 +106,29 @@ describe('ProjectManager', () => {
 
     describe('ProjectDependency class', () => {
         it('initializes with correct values', () => {
-            const dep = new ProjectDependency('pkg', 'repo', '1.0.0', '1.1.0');
+            const dep = new ProjectDependency('pkg', 'repo', '1.0.0', '1.1.0', 'https://github.com/test/repo');
 
             expect(dep.name).to.equal('pkg');
             expect(dep.repoName).to.equal('repo');
             expect(dep.previousReleaseVersion).to.equal('1.0.0');
             expect(dep.newVersion).to.equal('1.1.0');
+            expect(dep.repositoryUrl).to.equal('https://github.com/test/repo');
         });
 
         it('hasChanged returns truthy when versions differ', () => {
-            const dep = new ProjectDependency('pkg', 'repo', '1.0.0', '1.1.0');
+            const dep = new ProjectDependency('pkg', 'repo', '1.0.0', '1.1.0', 'https://github.com/test/repo');
 
             expect(dep.hasChanged()).to.be.ok;
         });
 
         it('hasChanged returns falsy when versions are the same', () => {
-            const dep = new ProjectDependency('pkg', 'repo', '1.0.0', '1.0.0');
+            const dep = new ProjectDependency('pkg', 'repo', '1.0.0', '1.0.0', 'https://github.com/test/repo');
 
             expect(dep.hasChanged()).to.not.be.ok;
         });
 
         it('hasChanged returns falsy for invalid semver', () => {
-            const dep = new ProjectDependency('pkg', 'repo', 'invalid', '1.0.0');
+            const dep = new ProjectDependency('pkg', 'repo', 'invalid', '1.0.0', 'https://github.com/test/repo');
 
             expect(dep.hasChanged()).to.not.be.ok;
         });
