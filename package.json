@@ -7,8 +7,8 @@
     "build": "rimraf dist && tsc",
     "lint": "eslint \"src/**\"",
     "watch": "tsc --watch",
-    "test": "nyc mocha \"src/**/*spec.ts\"",
-    "test:nocover": "mocha \"src/**/*.spec.ts\"",
+    "test": "NODE_OPTIONS='--import tsx' nyc mocha \"src/**/*spec.ts\"",
+    "test:nocover": "NODE_OPTIONS='--import tsx' mocha \"src/**/*.spec.ts\"",
     "package": "npm run build && npm pack"
   },
   "repository": {
@@ -34,6 +34,7 @@
   },
   "devDependencies": {
     "@types/chai": "^4.2.22",
+    "@types/chai-as-promised": "^8.0.2",
     "@types/dateformat": "~3",
     "@types/debounce": "^1.2.1",
     "@types/decompress": "^4.2.4",
@@ -50,6 +51,7 @@
     "@typescript-eslint/eslint-plugin": "^5.27.0",
     "@typescript-eslint/parser": "^5.27.0",
     "chai": "^4.3.4",
+    "chai-as-promised": "^8.0.2",
     "eslint": "^8.1.0",
     "eslint-plugin-no-only-tests": "^2.6.0",
     "mocha": "^11.1.0",
@@ -61,10 +63,6 @@
     "typescript": "^4.7.2"
   },
   "mocha": {
-    "require": [
-      "source-map-support/register",
-      "ts-node/register"
-    ],
     "watchFiles": [
       "src/**/*"
     ],
@@ -80,10 +78,6 @@
     ],
     "extension": [
       ".ts"
-    ],
-    "require": [
-      "ts-node/register",
-      "source-map-support/register"
     ],
     "reporter": [
       "text-summary",
