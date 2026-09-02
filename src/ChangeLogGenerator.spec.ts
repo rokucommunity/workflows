@@ -161,4 +161,143 @@ describe('Test ReleaseCreator.ts', () => {
         expect(lines[15]).to.contain('fixed linting issues');
 
     });
+
+    it('combines commits that have the exact same message', () => {
+        const commits = [
+            { message: 'Security enhancements', prNumber: '198' },
+            { message: 'fix: restrict CreateObject component usage detection', prNumber: '197' },
+            { message: 'Security enhancements', prNumber: '196' }
+        ];
+        const changelog = new ChangelogGenerator();
+        sinon.stub(changelog as any, 'getCommitLogs').callsFake(() => {
+            return commits.map(x => ({ hash: '', branchInfo: '', message: x.message, prNumber: x.prNumber }));
+        });
+        sinon.stub(ProjectManager, 'getProject').callsFake((name: string) => {
+            return {
+                name: 'bslint',
+                npmName: '',
+                repositoryUrl: 'https://github.com/rokucommunity/bslint',
+                dir: '',
+                version: '',
+                dependencies: [],
+                devDependencies: [],
+                changes: [],
+                lastTag: ''
+            };
+        });
+        const lines = changelog['getChangeLogs'](new Project('bslint', '', 'https://github.com/rokucommunity/bslint'), '1.0.0');
+        expect(lines.slice(5)).to.eql([
+            '### Changed',
+            ' - Security enhancements ([#196](https://github.com/rokucommunity/bslint/pull/196), [#198](https://github.com/rokucommunity/bslint/pull/198))',
+            '### Fixed',
+            ' - fix: restrict CreateObject component usage detection ([#197](https://github.com/rokucommunity/bslint/pull/197))'
+        ]);
+    });
+
+    it('combines duplicate dependency commit messages', () => {
+        const depCommits = [
+            { message: 'Security enhancements', prNumber: '1766' },
+            { message: 'Security enhancements', prNumber: '1764' },
+            { message: 'added a dep feature', prNumber: '1763' }
+        ];
+        const changelog = new ChangelogGenerator();
+        sinon.stub(changelog as any, 'getCommitLogs').callsFake((projectName: string) => {
+            if (projectName === 'brighterscript') {
+                return depCommits.map(x => ({ hash: '', branchInfo: '', message: x.message, prNumber: x.prNumber }));
+            }
+            return [];
+        });
+        sinon.stub(changelog as any, 'getVersionDate').returns('2026-09-02');
+        sinon.stub(ProjectManager, 'getProject').callsFake((name: string) => {
+            return {
+                name: name,
+                npmName: '',
+                repositoryUrl: `https://github.com/rokucommunity/${name}`,
+                dir: '',
+                version: '',
+                dependencies: [],
+                devDependencies: [],
+                changes: [],
+                lastTag: ''
+            };
+        });
+        const project = new Project('bslint', '', 'https://github.com/rokucommunity/bslint');
+        project.dependencies = [new ProjectDependency(
+            'brighterscript',
+            'brighterscript',
+            '0.72.5',
+            '0.73.1',
+            'https://github.com/rokucommunity/brighterscript'
+        )];
+        const lines = changelog['getChangeLogs'](project, '1.0.0');
+        expect(lines.slice(6)).to.eql([
+            ' - upgrade to [brighterscript@0.73.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0731---2026-09-02). Notable changes since 0.72.5:',
+            '     - Security enhancements ([#1764](https://github.com/rokucommunity/brighterscript/pull/1764), [#1766](https://github.com/rokucommunity/brighterscript/pull/1766))',
+            '     - added a dep feature ([#1763](https://github.com/rokucommunity/brighterscript/pull/1763))'
+        ]);
+    });
+
+    it('merges dependabot bump commits into the security enhancements entry', () => {
+        const commits = [
+            { message: 'Bump qs from 6.14.2 to 6.15.3', prNumber: '1766' },
+            { message: 'Security enhancements', prNumber: '198' },
+            { message: 'Bump postcss from 8.5.10 to 8.5.25', prNumber: '1764' },
+            { message: 'security enhancements', prNumber: '196' },
+            { message: 'Bump form-data from 2.5.5 to 2.5.6', prNumber: '1733' },
+            { message: 'Bump the version of the docs site', prNumber: '150' }
+        ];
+        const changelog = new ChangelogGenerator();
+        sinon.stub(changelog as any, 'getCommitLogs').callsFake(() => {
+            return commits.map(x => ({ hash: '', branchInfo: '', message: x.message, prNumber: x.prNumber }));
+        });
+        sinon.stub(ProjectManager, 'getProject').callsFake((name: string) => {
+            return {
+                name: 'bslint',
+                npmName: '',
+                repositoryUrl: 'https://github.com/rokucommunity/bslint',
+                dir: '',
+                version: '',
+                dependencies: [],
+                devDependencies: [],
+                changes: [],
+                lastTag: ''
+            };
+        });
+        const lines = changelog['getChangeLogs'](new Project('bslint', '', 'https://github.com/rokucommunity/bslint'), '1.0.0');
+        expect(lines.slice(5)).to.eql([
+            '### Changed',
+            ' - Security enhancements ([#196](https://github.com/rokucommunity/bslint/pull/196), [#198](https://github.com/rokucommunity/bslint/pull/198), [#1733](https://github.com/rokucommunity/bslint/pull/1733), [#1764](https://github.com/rokucommunity/bslint/pull/1764), [#1766](https://github.com/rokucommunity/bslint/pull/1766))',
+            //this one isn't a `bump <pkg> from <version> to <version>` message, so it stays on its own
+            ' - Bump the version of the docs site ([#150](https://github.com/rokucommunity/bslint/pull/150))'
+        ]);
+    });
+
+    it('combines commits without pr numbers using commit hashes', () => {
+        const commits = [
+            { hash: 'aaa1111', message: 'Security enhancements' },
+            { hash: 'bbb2222', message: 'Security enhancements' }
+        ];
+        const changelog = new ChangelogGenerator();
+        sinon.stub(changelog as any, 'getCommitLogs').callsFake(() => {
+            return commits.map(x => ({ hash: x.hash, branchInfo: '', message: x.message, prNumber: undefined }));
+        });
+        sinon.stub(ProjectManager, 'getProject').callsFake((name: string) => {
+            return {
+                name: 'bslint',
+                npmName: '',
+                repositoryUrl: 'https://github.com/rokucommunity/bslint',
+                dir: '',
+                version: '',
+                dependencies: [],
+                devDependencies: [],
+                changes: [],
+                lastTag: ''
+            };
+        });
+        const lines = changelog['getChangeLogs'](new Project('bslint', '', 'https://github.com/rokucommunity/bslint'), '1.0.0');
+        expect(lines.slice(5)).to.eql([
+            '### Changed',
+            ' - Security enhancements ([aaa1111](https://github.com/rokucommunity/bslint/commit/aaa1111), [bbb2222](https://github.com/rokucommunity/bslint/commit/bbb2222))'
+        ]);
+    });
 });
