@@ -185,14 +185,23 @@ export class ProjectManager {
                 }
                 if (installDependencies) {
                     let installVersion = 'latest';
-                    if (preidBuildKey) {
-                        if (semver.prerelease(dependency.previousReleaseVersion) && dependency.previousReleaseVersion.endsWith(preidBuildKey)) {
-                            logger.log(`Dependency ${dependency.name} has a matching prerelease version. Checking if there is a matching "lockstep" version.`);
-                            const nextDepVersion = semver.inc(dependency.previousReleaseVersion, 'prerelease');
-                            if (utils.executeCommandSucceeds(`npm view ${dependency.name}@${nextDepVersion}`, { cwd: project.dir })) {
-                                logger.log(`Matching version found. Installing ${dependency.name}@${nextDepVersion}`);
-                                installVersion = nextDepVersion;
-                            }
+                    if (preidBuildKey && semver.prerelease(dependency.previousReleaseVersion) && dependency.previousReleaseVersion.endsWith(preidBuildKey)) {
+                        //lockstep: this project and the dependency share the same prerelease identifier (i.e. both on `alpha.3`),
+                        //so try to move them both to the same next number (i.e. both to `alpha.4`)
+                        logger.log(`Dependency ${dependency.name} has a matching prerelease version. Checking if there is a matching "lockstep" version.`);
+                        const nextDepVersion = semver.inc(dependency.previousReleaseVersion, 'prerelease');
+                        if (utils.executeCommandSucceeds(`npm view ${dependency.name}@${nextDepVersion}`, { cwd: project.dir })) {
+                            logger.log(`Matching version found. Installing ${dependency.name}@${nextDepVersion}`);
+                            installVersion = nextDepVersion;
+                        }
+                    } else if (semver.prerelease(dependency.previousReleaseVersion)) {
+                        //the dependency is on a prerelease line that this project is NOT locked to (i.e. a stable 0.x project
+                        //depending on roku-deploy@4.0.0-alpha.3). `latest` would resolve to the newest _stable_ version, which
+                        //would look like a downgrade and get skipped, so find the newest release on that same prerelease line instead.
+                        const latestPrerelease = ProjectManager.getLatestPrereleaseVersion(project, dependency.name, dependency.previousReleaseVersion);
+                        if (latestPrerelease) {
+                            logger.log(`Dependency ${dependency.name} is on the ${dependency.previousReleaseVersion} prerelease line. Latest available is ${latestPrerelease}`);
+                            installVersion = latestPrerelease;
                         }
                     }
 
@@ -209,7 +218,7 @@ export class ProjectManager {
                     }
                     utils.executeCommand(`npm install ${dependency.name}@${installVersion}`, { cwd: project.dir });
 
-                    dependency.newVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
+                    dependency.newVersion = ProjectManager.getInstalledVersion(project, dependency.name);
 
                     utils.executeCommandWithOutput(`git status --porcelain`, { cwd: project.dir })
                         .split(/\r?\n/)
@@ -220,7 +229,7 @@ export class ProjectManager {
                     }
 
                 } else {
-                    dependency.newVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
+                    dependency.newVersion = ProjectManager.getInstalledVersion(project, dependency.name);
                 }
             }
         };
@@ -229,6 +238,50 @@ export class ProjectManager {
 
         install(project, 'dependencies');
         install(project, 'devDependencies', '--save-dev');
+    }
+
+    /**
+     * Read the version of a dependency as it currently sits in the project's node_modules
+     */
+    public static getInstalledVersion(project: Project, packageName: string) {
+        return fsExtra.readJsonSync(s`${project.dir}/node_modules/${packageName}/package.json`).version as string;
+    }
+
+    /**
+     * Find the newest published version on the same prerelease "line" as `currentVersion`.
+     * The line is defined as the same major.minor.patch and the same prerelease identifier (i.e. `alpha` for `4.0.0-alpha.3`).
+     * Returns undefined when nothing newer than `currentVersion` exists on that line.
+     */
+    public static getLatestPrereleaseVersion(project: Project, packageName: string, currentVersion: string) {
+        const prerelease = semver.prerelease(currentVersion);
+        if (!prerelease) {
+            return undefined;
+        }
+        const preid = prerelease[0];
+
+        const output = utils.tryExecuteCommandWithOutput(`npm show ${packageName} versions --json`, { cwd: project.dir });
+        if (!output) {
+            return undefined;
+        }
+        let versions: string[];
+        try {
+            const parsed = JSON.parse(output);
+            //npm returns a bare string when a package only has a single published version
+            versions = Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+            logger.log(`Could not parse the version list for ${packageName}`);
+            return undefined;
+        }
+
+        const candidates = versions.filter(version => {
+            if (!semver.valid(version) || semver.lte(version, currentVersion)) {
+                return false;
+            }
+            //must be on the same major.minor.patch, with the same prerelease identifier
+            return semver.diff(version, currentVersion) === 'prerelease' && semver.prerelease(version)?.[0] === preid;
+        });
+
+        return candidates.length > 0 ? semver.rsort(candidates)[0] : undefined;
     }
 
     public static getPreviousVersion(currentVersion: string, dir: string) {
