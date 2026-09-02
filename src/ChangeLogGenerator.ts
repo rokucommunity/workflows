@@ -164,14 +164,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     static SECURITY_ENHANCEMENTS_MESSAGE = 'Security enhancements';
 
     /**
-     * Dependabot-style version bumps (i.e. `Bump qs from 6.14.2 to 6.15.3`) are all security-related, so
-     * treat them as the same change as `Security enhancements` so they can be combined into a single entry.
+     * Dependabot-style version bumps (i.e. `Bump qs from 6.14.2 to 6.15.3` or `Bump brace-expansion in /benchmarks`)
+     * are all security-related, so treat them as the same change as `Security enhancements` so they can be
+     * combined into a single entry. A leading `chore:` is ignored so `chore: Security enhancements` combines
+     * with `Security enhancements`.
      */
     private normalizeCommitMessage(message: string) {
-        if (/^bump\s+\S+\s+from\s+\S+\s+to\s+\S+$/i.test(message)) {
-            return ChangelogGenerator.SECURITY_ENHANCEMENTS_MESSAGE;
-        }
-        if (message.toLowerCase() === ChangelogGenerator.SECURITY_ENHANCEMENTS_MESSAGE.toLowerCase()) {
+        //ignore a leading conventional-commit `chore:`/`chore(deps):` prefix when comparing
+        const bareMessage = message.replace(/^chore(\([^)]*\))?:\s*/i, '');
+        const isDependabotBump = /^bump\s+\S+\s+(?:from\s+\S+\s+to\s+\S+|in\s+\S+)$/i.test(bareMessage);
+        if (isDependabotBump || bareMessage.toLowerCase() === ChangelogGenerator.SECURITY_ENHANCEMENTS_MESSAGE.toLowerCase()) {
             return ChangelogGenerator.SECURITY_ENHANCEMENTS_MESSAGE;
         }
         return message;
