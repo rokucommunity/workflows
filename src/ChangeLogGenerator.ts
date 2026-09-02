@@ -102,15 +102,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             Chore: []
         };
 
-        for (const commit of this.getCommitLogs(project.name, project.lastTag, 'HEAD')) {
-            const section = this.getChangelogHeaderForMessage(commit.message);
+        function getReflinks(project: { name: string; repositoryUrl: string }, commits: Commit[], includeProjectName = false) {
+            return commits.map(commit => getReflink(project, commit, includeProjectName)).join(', ');
+        }
+
+        for (const group of this.groupCommitsByMessage(this.getCommitLogs(project.name, project.lastTag, 'HEAD'))) {
+            const section = this.getChangelogHeaderForMessage(group.message);
             if (section) {
                 if (section === 'Chore') {
                     continue;
                 }
-                sectionMap[section].push(` - ${commit.message} (${getReflink(project, commit)})`);
+                sectionMap[section].push(` - ${group.message} (${getReflinks(project, group.commits)})`);
             } else {
-                sectionMap.Changed.push(` - ${commit.message} (${getReflink(project, commit)})`);
+                sectionMap.Changed.push(` - ${group.message} (${getReflinks(project, group.commits)})`);
             }
         }
 
@@ -128,8 +132,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
                             `Notable changes since ${dependency.previousReleaseVersion}:`
                         ].join('')
                     );
-                    for (let commit of this.getCommitLogs(dependency.repoName, dependency.previousReleaseVersion, dependency.newVersion)) {
-                        sectionMap.Changed.push(`     - ${commit.message} (${getReflink(dependency, commit)})`);
+                    const dependencyCommits = this.getCommitLogs(dependency.repoName, dependency.previousReleaseVersion, dependency.newVersion);
+                    for (const group of this.groupCommitsByMessage(dependencyCommits)) {
+                        sectionMap.Changed.push(`     - ${group.message} (${getReflinks(dependency, group.commits)})`);
                     }
                 } else {
                     sectionMap.Changed.push(
@@ -154,6 +159,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         }
 
         return lines;
+    }
+
+    static SECURITY_ENHANCEMENTS_MESSAGE = 'Security enhancements';
+
+    /**
+     * Dependabot-style version bumps (i.e. `Bump qs from 6.14.2 to 6.15.3`) are all security-related, so
+     * treat them as the same change as `Security enhancements` so they can be combined into a single entry.
+     */
+    private normalizeCommitMessage(message: string) {
+        if (/^bump\s+\S+\s+from\s+\S+\s+to\s+\S+$/i.test(message)) {
+            return ChangelogGenerator.SECURITY_ENHANCEMENTS_MESSAGE;
+        }
+        if (message.toLowerCase() === ChangelogGenerator.SECURITY_ENHANCEMENTS_MESSAGE.toLowerCase()) {
+            return ChangelogGenerator.SECURITY_ENHANCEMENTS_MESSAGE;
+        }
+        return message;
+    }
+
+    /**
+     * Combine commits that have the exact same message into a single entry so we can list all of their
+     * reflinks together (i.e. `Security enhancements (#196, #198)`). The first occurrence of a message
+     * determines the position of the group in the list, and each group's reflinks are sorted by ascending
+     * pr number (commits without a pr number are listed last).
+     */
+    private groupCommitsByMessage(commits: Commit[]) {
+        const groups: Array<{ message: string; commits: Commit[] }> = [];
+        const groupsByMessage = new Map<string, { message: string; commits: Commit[] }>();
+        for (const commit of commits) {
+            const message = this.normalizeCommitMessage(commit.message);
+            let group = groupsByMessage.get(message);
+            if (!group) {
+                group = { message: message, commits: [] };
+                groupsByMessage.set(message, group);
+                groups.push(group);
+            }
+            group.commits.push(commit);
+        }
+        //sort each group's commits by ascending pr number. commits without a pr number go last, in their original order
+        for (const group of groups) {
+            group.commits = group.commits.map((commit, index) => ({ commit: commit, index: index })).sort((a, b) => {
+                const aPr = parseInt(a.commit.prNumber);
+                const bPr = parseInt(b.commit.prNumber);
+                if (isNaN(aPr) && isNaN(bPr)) {
+                    return a.index - b.index;
+                } else if (isNaN(aPr)) {
+                    return 1;
+                } else if (isNaN(bPr)) {
+                    return -1;
+                }
+                return aPr - bPr;
+            }).map(x => x.commit);
+        }
+        return groups;
     }
 
     private computeChanges(project: Project) {
