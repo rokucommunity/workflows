@@ -198,6 +198,7 @@ describe('Test ReleaseCreator.ts', () => {
         const depCommits = [
             { message: 'Security enhancements', prNumber: '1766' },
             { message: 'Security enhancements', prNumber: '1764' },
+            { message: 'chore: Security enhancements', prNumber: '1762' },
             { message: 'added a dep feature', prNumber: '1763' }
         ];
         const changelog = new ChangelogGenerator();
@@ -232,7 +233,7 @@ describe('Test ReleaseCreator.ts', () => {
         const lines = changelog['getChangeLogs'](project, '1.0.0');
         expect(lines.slice(6)).to.eql([
             ' - upgrade to [brighterscript@0.73.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0731---2026-09-02). Notable changes since 0.72.5:',
-            '     - Security enhancements ([#1764](https://github.com/rokucommunity/brighterscript/pull/1764), [#1766](https://github.com/rokucommunity/brighterscript/pull/1766))',
+            '     - Security enhancements ([#1762](https://github.com/rokucommunity/brighterscript/pull/1762), [#1764](https://github.com/rokucommunity/brighterscript/pull/1764), [#1766](https://github.com/rokucommunity/brighterscript/pull/1766))',
             '     - added a dep feature ([#1763](https://github.com/rokucommunity/brighterscript/pull/1763))'
         ]);
     });
@@ -269,6 +270,40 @@ describe('Test ReleaseCreator.ts', () => {
             ' - Security enhancements ([#196](https://github.com/rokucommunity/bslint/pull/196), [#198](https://github.com/rokucommunity/bslint/pull/198), [#1733](https://github.com/rokucommunity/bslint/pull/1733), [#1764](https://github.com/rokucommunity/bslint/pull/1764), [#1766](https://github.com/rokucommunity/bslint/pull/1766))',
             //this one isn't a `bump <pkg> from <version> to <version>` message, so it stays on its own
             ' - Bump the version of the docs site ([#150](https://github.com/rokucommunity/bslint/pull/150))'
+        ]);
+    });
+
+    it('combines chore-prefixed and path-scoped security commits', () => {
+        const commits = [
+            { message: 'Security enhancements', prNumber: '414' },
+            { message: 'chore: Security enhancements', prNumber: '407' },
+            { message: 'Bump brace-expansion in /benchmarks', prNumber: '1774' },
+            { message: 'chore(deps): Security enhancements', prNumber: '387' },
+            { message: 'Bump qs from 6.14.2 to 6.15.3', prNumber: '1766' },
+            { message: 'chore: Simplify create-vsix inputs', prNumber: '401' }
+        ];
+        const changelog = new ChangelogGenerator();
+        sinon.stub(changelog as any, 'getCommitLogs').callsFake(() => {
+            return commits.map(x => ({ hash: '', branchInfo: '', message: x.message, prNumber: x.prNumber }));
+        });
+        sinon.stub(ProjectManager, 'getProject').callsFake((name: string) => {
+            return {
+                name: 'bslint',
+                npmName: '',
+                repositoryUrl: 'https://github.com/rokucommunity/bslint',
+                dir: '',
+                version: '',
+                dependencies: [],
+                devDependencies: [],
+                changes: [],
+                lastTag: ''
+            };
+        });
+        const lines = changelog['getChangeLogs'](new Project('bslint', '', 'https://github.com/rokucommunity/bslint'), '1.0.0');
+        expect(lines.slice(5)).to.eql([
+            '### Changed',
+            ' - Security enhancements ([#387](https://github.com/rokucommunity/bslint/pull/387), [#407](https://github.com/rokucommunity/bslint/pull/407), [#414](https://github.com/rokucommunity/bslint/pull/414), [#1766](https://github.com/rokucommunity/bslint/pull/1766), [#1774](https://github.com/rokucommunity/bslint/pull/1774))'
+            //`chore: Simplify create-vsix inputs` is still a plain chore, so it stays filtered out of the changelog
         ]);
     });
 
