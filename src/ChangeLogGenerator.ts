@@ -106,7 +106,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             return commits.map(commit => getReflink(project, commit, includeProjectName)).join(', ');
         }
 
-        for (const group of this.groupCommitsByMessage(this.getCommitLogs(project.name, project.lastTag, 'HEAD'))) {
+        const projectContext: CommitContext = { dir: project.dir, ref: 'HEAD' };
+        for (const group of this.groupCommitsByMessage(this.getCommitLogs(project.name, project.lastTag, 'HEAD'), projectContext)) {
             const section = this.getChangelogHeaderForMessage(group.message);
             if (section) {
                 if (section === 'Chore') {
@@ -133,7 +134,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
                         ].join('')
                     );
                     const dependencyCommits = this.getCommitLogs(dependency.repoName, dependency.previousReleaseVersion, dependency.newVersion);
-                    for (const group of this.groupCommitsByMessage(dependencyCommits)) {
+                    const dependencyContext: CommitContext = {
+                        dir: dependencyProject.dir,
+                        ref: utils.isVersion(dependency.newVersion) ? `v${dependency.newVersion}` : dependency.newVersion
+                    };
+                    for (const group of this.groupCommitsByMessage(dependencyCommits, dependencyContext)) {
                         sectionMap.Changed.push(`     - ${group.message} (${getReflinks(dependency, group.commits)})`);
                     }
                 } else {
@@ -164,17 +169,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     static SECURITY_ENHANCEMENTS_MESSAGE = 'Security enhancements';
 
     /**
+     * Cache of `<dir>|<ref>|<path>` -> the set of dependency names declared in that package.json, so we only
+     * shell out to git once per manifest.
+     */
+    private manifestDependencyCache = new Map<string, Set<string>>();
+
+    /**
+     * Read the dependency names declared in `<path>/package.json` at the given git ref of the given repo.
+     * Returns an empty set when the manifest doesn't exist or can't be parsed.
+     */
+    private getDeclaredDependencies(dir: string, ref: string, path: string) {
+        const cacheKey = `${dir}|${ref}|${path}`;
+        let dependencyNames = this.manifestDependencyCache.get(cacheKey);
+        if (dependencyNames) {
+            return dependencyNames;
+        }
+        dependencyNames = new Set<string>();
+        //`path` is repo-relative and may be `/`, `/benchmarks`, `/packages/foo`, etc.
+        const manifestPath = `${path.replace(/^\/+|\/+$/g, '')}/package.json`.replace(/^\//, '');
+        const output = utils.tryExecuteCommandWithOutput(`git show ${ref}:${manifestPath}`, { cwd: dir }).toString();
+        if (output) {
+            try {
+                const packageJson = JSON.parse(output);
+                for (const dependencyType of ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies']) {
+                    for (const name of Object.keys(packageJson?.[dependencyType] ?? {})) {
+                        dependencyNames.add(name);
+                    }
+                }
+            } catch {
+                //a manifest we can't parse tells us nothing; treat it as declaring nothing
+            }
+        }
+        this.manifestDependencyCache.set(cacheKey, dependencyNames);
+        return dependencyNames;
+    }
+
+    /**
+     * A multi-path dependabot bump (i.e. `Bump brace-expansion in /benchmarks and /docs`) is only treated as a
+     * dependency bump when the named package is actually declared in one of those manifests. That keeps us from
+     * folding an unrelated message that happens to share the shape (i.e. `Bump local_var in /SomeRoute and /Other`).
+     */
+    private isDependencyOfAnyPath(packageName: string, paths: string[], context?: CommitContext) {
+        if (!context?.dir) {
+            return false;
+        }
+        return paths.some(path => this.getDeclaredDependencies(context.dir, context.ref, path).has(packageName));
+    }
+
+    /**
      * Dependabot-style version bumps (i.e. `Bump qs from 6.14.2 to 6.15.3` or `Bump brace-expansion in /benchmarks`)
      * are all security-related, so treat them as the same change as `Security enhancements` so they can be
      * combined into a single entry. A leading `chore:` is ignored so `chore: Security enhancements` combines
      * with `Security enhancements`.
      */
-    private normalizeCommitMessage(message: string) {
+    private normalizeCommitMessage(message: string, context?: CommitContext) {
         //ignore a leading conventional-commit `chore:`/`chore(deps):` prefix when comparing
         const bareMessage = message.replace(/^chore(\([^)]*\))?:\s*/i, '');
-        const isDependabotBump = /^bump\s+\S+\s+(?:from\s+\S+\s+to\s+\S+|in\s+\S+)$/i.test(bareMessage);
-        if (isDependabotBump || bareMessage.toLowerCase() === ChangelogGenerator.SECURITY_ENHANCEMENTS_MESSAGE.toLowerCase()) {
+        if (bareMessage.toLowerCase() === ChangelogGenerator.SECURITY_ENHANCEMENTS_MESSAGE.toLowerCase()) {
             return ChangelogGenerator.SECURITY_ENHANCEMENTS_MESSAGE;
+        }
+        //`Bump <pkg> from <x> to <y>` and single-path `Bump <pkg> in <path>` are unambiguously dependabot
+        if (/^bump\s+\S+\s+(?:from\s+\S+\s+to\s+\S+|in\s+\S+)$/i.test(bareMessage)) {
+            return ChangelogGenerator.SECURITY_ENHANCEMENTS_MESSAGE;
+        }
+        //`Bump <pkg> in <path>[,] and <path>...` shares its shape with ordinary prose, so verify the package
+        //is really declared in one of those manifests before folding it in
+        const [, packageName, pathList] = /^bump\s+(\S+)\s+in\s+(\S.*)$/i.exec(bareMessage) ?? [];
+        if (packageName && pathList) {
+            const paths = pathList.split(/\s*(?:,|\band\b)\s*/i).filter(x => x.startsWith('/'));
+            if (paths.length > 0 && this.isDependencyOfAnyPath(packageName, paths, context)) {
+                return ChangelogGenerator.SECURITY_ENHANCEMENTS_MESSAGE;
+            }
         }
         return message;
     }
@@ -185,11 +250,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
      * determines the position of the group in the list, and each group's reflinks are sorted by ascending
      * pr number (commits without a pr number are listed last).
      */
-    private groupCommitsByMessage(commits: Commit[]) {
+    private groupCommitsByMessage(commits: Commit[], context?: CommitContext) {
         const groups: Array<{ message: string; commits: Commit[] }> = [];
         const groupsByMessage = new Map<string, { message: string; commits: Commit[] }>();
         for (const commit of commits) {
-            const message = this.normalizeCommitMessage(commit.message);
+            const message = this.normalizeCommitMessage(commit.message, context);
             let group = groupsByMessage.get(message);
             if (!group) {
                 group = { message: message, commits: [] };
@@ -287,3 +352,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 }
 
 type ChangelogSection = 'Added' | 'Changed' | 'Deprecated' | 'Fixed' | 'Removed' | 'Chore';
+
+/**
+ * Where a set of commits came from, so we can inspect that repo's manifests at the matching ref
+ */
+interface CommitContext {
+    dir: string;
+    ref: string;
+}
