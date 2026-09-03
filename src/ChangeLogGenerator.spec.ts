@@ -1,7 +1,9 @@
 /* eslint-disable camelcase */
 import { expect } from 'chai';
 import { createSandbox } from 'sinon';
-import { utils } from './utils';
+import * as fsExtra from 'fs-extra';
+import { tmpdir } from 'os';
+import { utils, standardizePath as s } from './utils';
 import { ChangelogGenerator } from './ChangeLogGenerator';
 import { ProjectManager, Project, ProjectDependency } from './ProjectManager';
 
@@ -305,6 +307,72 @@ describe('Test ReleaseCreator.ts', () => {
             ' - Security enhancements ([#387](https://github.com/rokucommunity/bslint/pull/387), [#407](https://github.com/rokucommunity/bslint/pull/407), [#414](https://github.com/rokucommunity/bslint/pull/414), [#1766](https://github.com/rokucommunity/bslint/pull/1766), [#1774](https://github.com/rokucommunity/bslint/pull/1774))'
             //`chore: Simplify create-vsix inputs` is still a plain chore, so it stays filtered out of the changelog
         ]);
+    });
+
+    it('folds a multi-path bump only when the package is a real dependency of one of those paths', () => {
+        const commits = [
+            { message: 'Security enhancements', prNumber: '100' },
+            //brace-expansion IS declared in /benchmarks, so this is a real dependabot bump
+            { message: 'Bump brace-expansion in /benchmarks and /docs', prNumber: '201' },
+            //local_var is not declared anywhere, so this is ordinary prose that happens to share the shape
+            { message: 'Bump local_var in /SomeURLRoute and /SomeOtherUrlRoute', prNumber: '202' }
+        ];
+        const changelog = new ChangelogGenerator();
+        sinon.stub(changelog as any, 'getCommitLogs').callsFake(() => {
+            return commits.map(x => ({ hash: '', branchInfo: '', message: x.message, prNumber: x.prNumber }));
+        });
+        sinon.stub(changelog as any, 'getDeclaredDependencies').callsFake((dir: string, ref: string, path: string) => {
+            return path === '/benchmarks' ? new Set(['brace-expansion']) : new Set<string>();
+        });
+        sinon.stub(ProjectManager, 'getProject').callsFake(() => {
+            return {
+                name: 'bslint',
+                npmName: '',
+                repositoryUrl: 'https://github.com/rokucommunity/bslint',
+                dir: '/tmp/bslint',
+                version: '',
+                dependencies: [],
+                devDependencies: [],
+                changes: [],
+                lastTag: ''
+            };
+        });
+        const project = new Project('bslint', '', 'https://github.com/rokucommunity/bslint');
+        project.dir = '/tmp/bslint';
+        const lines = changelog['getChangeLogs'](project, '1.0.0');
+        expect(lines.slice(5)).to.eql([
+            '### Changed',
+            ' - Security enhancements ([#100](https://github.com/rokucommunity/bslint/pull/100), [#201](https://github.com/rokucommunity/bslint/pull/201))',
+            ' - Bump local_var in /SomeURLRoute and /SomeOtherUrlRoute ([#202](https://github.com/rokucommunity/bslint/pull/202))'
+        ]);
+    });
+
+    it('does not fold a multi-path bump when there is no repo to inspect', () => {
+        const changelog = new ChangelogGenerator();
+        //no dir means no manifest to verify against, so leave the message alone rather than guessing
+        expect(changelog['normalizeCommitMessage']('Bump brace-expansion in /benchmarks and /docs', undefined))
+            .to.eql('Bump brace-expansion in /benchmarks and /docs');
+    });
+
+    it('reads declared dependencies from a manifest at a git ref', () => {
+        const changelog = new ChangelogGenerator();
+        const tempDir = s`${tmpdir()}/changelog-manifest-test-${process.pid}`;
+        fsExtra.removeSync(tempDir);
+        fsExtra.outputJsonSync(s`${tempDir}/benchmarks/package.json`, {
+            dependencies: { 'brace-expansion': '^1.1.13' },
+            devDependencies: { mocha: '^11.1.0' }
+        });
+        utils.executeCommand('git init', { cwd: tempDir });
+        utils.executeCommand('git add -A', { cwd: tempDir });
+        utils.executeCommand('git -c user.name=t -c user.email=t@t commit -m init', { cwd: tempDir });
+        try {
+            const names = changelog['getDeclaredDependencies'](tempDir, 'HEAD', '/benchmarks');
+            expect([...names].sort()).to.eql(['brace-expansion', 'mocha']);
+            //a manifest that doesn't exist at this ref yields nothing rather than throwing
+            expect([...changelog['getDeclaredDependencies'](tempDir, 'HEAD', '/nope')]).to.eql([]);
+        } finally {
+            fsExtra.removeSync(tempDir);
+        }
     });
 
     it('combines commits without pr numbers using commit hashes', () => {
