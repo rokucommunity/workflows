@@ -184,36 +184,50 @@ export class ProjectManager {
                     dependency.previousReleaseVersion = utils.executeCommandWithOutput('git rev-list --max-parents=0 HEAD', { cwd: dependencyProject.dir });
                 }
                 if (installDependencies) {
+                    //The floor for this dependency is the highest version we already know about: the pin sitting in the
+                    //working tree's package.json, or the one from the previous release, whichever is greater. Using only the
+                    //previous release's pin misses hand-bumps made since the last tag (i.e. the tree says `^4.0.0-alpha.5`
+                    //while the last tag still says `^4.0.0-alpha.2`), which is how a `latest` of `3.18.4` once slipped through.
+                    const currentPin = ProjectManager.getCurrentPinnedVersion(project, dependency.name, dependencyType);
+                    const floor = ProjectManager.getHighestVersion(currentPin, dependency.previousReleaseVersion);
+
                     let installVersion = 'latest';
-                    if (preidBuildKey && semver.prerelease(dependency.previousReleaseVersion) && dependency.previousReleaseVersion.endsWith(preidBuildKey)) {
-                        //lockstep: this project and the dependency share the same prerelease identifier (i.e. both on `alpha.3`),
-                        //so try to move them both to the same next number (i.e. both to `alpha.4`)
+                    if (preidBuildKey && floor && semver.prerelease(floor)?.join('.') === preidBuildKey) {
+                        //lockstep: this project and the dependency are on the exact same prerelease build key (i.e. both on
+                        //`alpha.3`), so try to move them both to the same next number (i.e. both to `alpha.4`). Anything else
+                        //(a shared `alpha` identifier at a different number, i.e. project `alpha.52` / dep `alpha.5`) is NOT a
+                        //lockstep and falls through to the catch-up branch below.
                         logger.log(`Dependency ${dependency.name} has a matching prerelease version. Checking if there is a matching "lockstep" version.`);
-                        const nextDepVersion = semver.inc(dependency.previousReleaseVersion, 'prerelease');
+                        const nextDepVersion = semver.inc(floor, 'prerelease');
                         if (utils.executeCommandSucceeds(`npm view ${dependency.name}@${nextDepVersion}`, { cwd: project.dir })) {
                             logger.log(`Matching version found. Installing ${dependency.name}@${nextDepVersion}`);
                             installVersion = nextDepVersion;
                         }
-                    } else if (semver.prerelease(dependency.previousReleaseVersion)) {
+                    } else if (floor && semver.prerelease(floor)) {
                         //the dependency is on a prerelease line that this project is NOT locked to (i.e. a stable 0.x project
-                        //depending on roku-deploy@4.0.0-alpha.3). `latest` would resolve to the newest _stable_ version, which
-                        //would look like a downgrade and get skipped, so find the newest release on that same prerelease line instead.
-                        const latestPrerelease = ProjectManager.getLatestPrereleaseVersion(project, dependency.name, dependency.previousReleaseVersion);
-                        if (latestPrerelease) {
-                            logger.log(`Dependency ${dependency.name} is on the ${dependency.previousReleaseVersion} prerelease line. Latest available is ${latestPrerelease}`);
-                            installVersion = latestPrerelease;
+                        //depending on roku-deploy@4.0.0-alpha.3). `latest` points at the newest _stable_ version, which for a
+                        //package mid-major-alpha is the OLD major (roku-deploy `latest` is 3.18.4 while the pin is 4.0.0-alpha.5),
+                        //so never fall back to it here. Prefer the newest release on the same prerelease line, then allow
+                        //graduating to a stable release that is genuinely newer than the floor (i.e. 4.0.0-alpha.6 -> 4.0.0).
+                        const latestPrerelease = ProjectManager.getLatestPrereleaseVersion(project, dependency.name, floor);
+                        const stableUpgrade = ProjectManager.getLatestStableUpgrade(project, dependency.name, floor);
+                        const best = ProjectManager.getHighestVersion(latestPrerelease, stableUpgrade);
+                        if (best) {
+                            logger.log(`Dependency ${dependency.name} is on the ${floor} prerelease line. Best available upgrade is ${best}`);
+                            installVersion = best;
+                        } else {
+                            logger.log(`No upgrade available for ${dependency.name} beyond ${floor}. Skipping installation.`);
+                            continue;
                         }
                     }
 
                     const installVesrionString = utils.executeCommandWithOutput(`npm show ${dependency.name}@${installVersion} version`, { cwd: project.dir });
-                    if (utils.isVersion(dependency.previousReleaseVersion) &&
-                        (!installVesrionString || semver.valid(installVesrionString) === null || semver.lt(installVesrionString, dependency.previousReleaseVersion))
-                    ) {
-                        if (!installVesrionString || semver.valid(installVesrionString) === null) {
-                            logger.log(`No valid version found for ${dependency.name}@${installVersion}. Using previous release version ${dependency.previousReleaseVersion}`);
-                        } else {
-                            logger.log(`Downgrading ${dependency.name} from ${dependency.previousReleaseVersion} to ${installVesrionString} is not allowed. Skipping installation.`);
-                        }
+                    if (!installVesrionString || semver.valid(installVesrionString) === null) {
+                        logger.log(`No valid version found for ${dependency.name}@${installVersion}. Using previous release version ${dependency.previousReleaseVersion}`);
+                        continue;
+                    }
+                    if (utils.isVersion(floor) && semver.lte(installVesrionString, floor)) {
+                        logger.log(`Moving ${dependency.name} from ${floor} to ${installVesrionString} is not an upgrade. Skipping installation.`);
                         continue;
                     }
                     utils.executeCommand(`npm install ${dependency.name}@${installVersion}`, { cwd: project.dir });
@@ -248,6 +262,65 @@ export class ProjectManager {
     }
 
     /**
+     * Read the version range a dependency is currently pinned to in the project's working-tree package.json,
+     * with any range prefix (`^`, `~`, `>=`, ...) stripped. This reflects hand-edits made since the last release tag.
+     */
+    public static getCurrentPinnedVersion(project: Project, packageName: string, dependencyType: 'dependencies' | 'devDependencies') {
+        let packageJson: any;
+        try {
+            packageJson = fsExtra.readJsonSync(s`${project.dir}/package.json`);
+        } catch {
+            return undefined;
+        }
+        const range = packageJson?.[dependencyType]?.[packageName];
+        if (!range) {
+            return undefined;
+        }
+        const version = String(range).replace(/^(>=|<=|>|<|=|\^|~)/, '');
+        return semver.valid(version) ? version : undefined;
+    }
+
+    /**
+     * Return whichever of the given values is the highest valid semver version, ignoring anything that isn't
+     * a version (i.e. the commit hash `previousReleaseVersion` falls back to when a dependency is brand new).
+     */
+    public static getHighestVersion(...versions: string[]) {
+        const valid = versions.filter(x => x && semver.valid(x));
+        return valid.length > 0 ? semver.rsort(valid)[0] : undefined;
+    }
+
+    /**
+     * Find the newest published _stable_ release that is strictly newer than `currentVersion`. This lets a dependency
+     * graduate off a prerelease line once the real release ships (i.e. `4.0.0-alpha.6` -> `4.0.0`), which `latest`
+     * cannot be trusted to do while an older major still holds the `latest` tag.
+     */
+    public static getLatestStableUpgrade(project: Project, packageName: string, currentVersion: string) {
+        const versions = ProjectManager.getPublishedVersions(project, packageName);
+        const candidates = versions.filter(version => {
+            return semver.valid(version) && !semver.prerelease(version) && semver.gt(version, currentVersion);
+        });
+        return candidates.length > 0 ? semver.rsort(candidates)[0] : undefined;
+    }
+
+    /**
+     * Fetch the full list of versions published to npm for a package. Returns an empty array when npm has nothing to say.
+     */
+    public static getPublishedVersions(project: Project, packageName: string) {
+        const output = utils.tryExecuteCommandWithOutput(`npm show ${packageName} versions --json`, { cwd: project.dir });
+        if (!output) {
+            return [];
+        }
+        try {
+            const parsed = JSON.parse(output.toString());
+            //npm returns a bare string when a package only has a single published version
+            return Array.isArray(parsed) ? parsed as string[] : [parsed as string];
+        } catch {
+            logger.log(`Could not parse the version list for ${packageName}`);
+            return [];
+        }
+    }
+
+    /**
      * Find the newest published version on the same prerelease "line" as `currentVersion`.
      * The line is defined as the same major.minor.patch and the same prerelease identifier (i.e. `alpha` for `4.0.0-alpha.3`).
      * Returns undefined when nothing newer than `currentVersion` exists on that line.
@@ -259,19 +332,7 @@ export class ProjectManager {
         }
         const preid = prerelease[0];
 
-        const output = utils.tryExecuteCommandWithOutput(`npm show ${packageName} versions --json`, { cwd: project.dir });
-        if (!output) {
-            return undefined;
-        }
-        let versions: string[];
-        try {
-            const parsed = JSON.parse(output);
-            //npm returns a bare string when a package only has a single published version
-            versions = Array.isArray(parsed) ? parsed : [parsed];
-        } catch {
-            logger.log(`Could not parse the version list for ${packageName}`);
-            return undefined;
-        }
+        const versions = ProjectManager.getPublishedVersions(project, packageName);
 
         const candidates = versions.filter(version => {
             if (!semver.valid(version) || semver.lte(version, currentVersion)) {

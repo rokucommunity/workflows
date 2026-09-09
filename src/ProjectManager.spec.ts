@@ -149,6 +149,11 @@ describe('ProjectManager', () => {
              * The version of each dependency found in the previous release's package.json
              */
             previousVersions: Record<string, string>;
+            /**
+             * The version each dependency is pinned to in the working-tree package.json. Defaults to `previousVersions`,
+             * which is the common case where nothing has been hand-bumped since the last release tag.
+             */
+            treePins?: Record<string, string>;
         }) {
             const installs: string[] = [];
 
@@ -196,6 +201,11 @@ describe('ProjectManager', () => {
             //`getDependencyVersionFromRelease` reads the previous release's package.json out of git
             sinon.stub(ProjectManager.prototype as any, 'getDependencyVersionFromRelease').callsFake((project, releaseVersion, packageName) => {
                 return options.previousVersions[packageName as string] ?? '';
+            });
+
+            //`getCurrentPinnedVersion` reads the working-tree package.json
+            sinon.stub(ProjectManager, 'getCurrentPinnedVersion').callsFake((project, packageName: string) => {
+                return (options.treePins ?? options.previousVersions)[packageName];
             });
 
             //after `npm install`, the code reads the installed version back out of node_modules
@@ -410,6 +420,127 @@ describe('ProjectManager', () => {
                 ProjectManager.innerInstallDependencies(project, '0.20.0', true);
 
                 expect(installs).to.eql(['roku-deploy@4.0.0-alpha.4']);
+            });
+        });
+
+        describe('working-tree pin floor', () => {
+            it('upgrades a hand-bumped prerelease pin instead of downgrading it to `latest`', () => {
+                //the exact rooibos release that regressed: the tree had been hand-bumped to `^4.0.0-alpha.5`,
+                //but the last tag still pinned `^4.0.0-alpha.2`, and roku-deploy's `latest` tag is the old 3.x major
+                const installs = setupInstallStubs({
+                    registry: {
+                        'roku-deploy': ['3.18.4', '4.0.0-alpha.2', '4.0.0-alpha.5', '4.0.0-alpha.6']
+                    },
+                    previousVersions: { 'roku-deploy': '4.0.0-alpha.2' },
+                    treePins: { 'roku-deploy': '4.0.0-alpha.5' }
+                });
+                const project = createProject('6.0.0-alpha.52', ['roku-deploy']);
+
+                ProjectManager.innerInstallDependencies(project, '6.0.0-alpha.52', true);
+
+                expect(installs).to.eql(['roku-deploy@4.0.0-alpha.6']);
+                expect(project.dependencies[0].newVersion).to.equal('4.0.0-alpha.6');
+            });
+
+            it('catches a hand-bumped pin all the way up to the newest alpha, skipping intermediate ones', () => {
+                //rooibos v6 alpha with roku-deploy pinned at alpha.3 should land on alpha.5, not step to alpha.4
+                const installs = setupInstallStubs({
+                    registry: {
+                        'roku-deploy': ['3.18.4', '4.0.0-alpha.2', '4.0.0-alpha.3', '4.0.0-alpha.4', '4.0.0-alpha.5']
+                    },
+                    previousVersions: { 'roku-deploy': '4.0.0-alpha.2' },
+                    treePins: { 'roku-deploy': '4.0.0-alpha.3' }
+                });
+                const project = createProject('6.0.0-alpha.52', ['roku-deploy']);
+
+                ProjectManager.innerInstallDependencies(project, '6.0.0-alpha.52', true);
+
+                expect(installs).to.eql(['roku-deploy@4.0.0-alpha.5']);
+                expect(project.dependencies[0].newVersion).to.equal('4.0.0-alpha.5');
+            });
+
+            it('never downgrades to `latest` when the tree pin is already the newest prerelease', () => {
+                const installs = setupInstallStubs({
+                    registry: { 'roku-deploy': ['3.18.4', '4.0.0-alpha.2', '4.0.0-alpha.5'] },
+                    previousVersions: { 'roku-deploy': '4.0.0-alpha.2' },
+                    treePins: { 'roku-deploy': '4.0.0-alpha.5' }
+                });
+                const project = createProject('6.0.0-alpha.52', ['roku-deploy']);
+
+                ProjectManager.innerInstallDependencies(project, '6.0.0-alpha.52', true);
+
+                expect(installs).to.eql([]);
+            });
+
+            it('graduates a prerelease pin to the stable release once it ships', () => {
+                const installs = setupInstallStubs({
+                    registry: { 'roku-deploy': ['3.18.4', '4.0.0-alpha.6', '4.0.0'] },
+                    previousVersions: { 'roku-deploy': '4.0.0-alpha.6' },
+                    treePins: { 'roku-deploy': '4.0.0-alpha.6' }
+                });
+                const project = createProject('6.0.0-alpha.52', ['roku-deploy']);
+
+                ProjectManager.innerInstallDependencies(project, '6.0.0-alpha.52', true);
+
+                expect(installs).to.eql(['roku-deploy@4.0.0']);
+            });
+
+            it('prefers a newer stable release over an older prerelease on the same line', () => {
+                const installs = setupInstallStubs({
+                    registry: { 'roku-deploy': ['4.0.0-alpha.6', '4.0.0', '4.1.0'] },
+                    previousVersions: { 'roku-deploy': '4.0.0-alpha.6' },
+                    treePins: { 'roku-deploy': '4.0.0-alpha.6' }
+                });
+                const project = createProject('6.0.0-alpha.52', ['roku-deploy']);
+
+                ProjectManager.innerInstallDependencies(project, '6.0.0-alpha.52', true);
+
+                expect(installs).to.eql(['roku-deploy@4.1.0']);
+            });
+
+            it('enforces the floor even when the previous release version is a commit hash', () => {
+                //a brand-new dependency has no entry in the previous release, so `previousReleaseVersion`
+                //falls back to a commit hash. That used to disable the downgrade guard entirely.
+                const installs = setupInstallStubs({
+                    registry: { 'roku-deploy': ['3.18.4', '4.0.0-alpha.5'] },
+                    previousVersions: {},
+                    treePins: { 'roku-deploy': '4.0.0-alpha.5' }
+                });
+                const project = createProject('6.0.0-alpha.52', ['roku-deploy']);
+                //a dependency missing from the previous release resolves `getProject` to look up its clone dir
+                sinon.stub(ProjectManager, 'getProject').returns(createMockProject());
+
+                ProjectManager.innerInstallDependencies(project, '6.0.0-alpha.52', true);
+
+                expect(installs).to.eql([]);
+            });
+
+            it('treats a shared preid at a different number as a catch-up, not a lockstep', () => {
+                //`4.0.0-alpha.2`.endsWith('alpha.52') is false, and these are genuinely not in lockstep, so the
+                //dependency should catch all the way up to the newest alpha rather than stepping one number
+                const installs = setupInstallStubs({
+                    registry: { 'roku-deploy': ['4.0.0-alpha.2', '4.0.0-alpha.3', '4.0.0-alpha.6'] },
+                    previousVersions: { 'roku-deploy': '4.0.0-alpha.2' },
+                    treePins: { 'roku-deploy': '4.0.0-alpha.2' }
+                });
+                const project = createProject('6.0.0-alpha.52', ['roku-deploy']);
+
+                ProjectManager.innerInstallDependencies(project, '6.0.0-alpha.52', true);
+
+                expect(installs).to.eql(['roku-deploy@4.0.0-alpha.6']);
+            });
+
+            it('still upgrades a stable dependency to the latest stable', () => {
+                const installs = setupInstallStubs({
+                    registry: { 'roku-deploy': ['3.12.0', '3.18.4'] },
+                    previousVersions: { 'roku-deploy': '3.12.0' },
+                    treePins: { 'roku-deploy': '3.12.0' }
+                });
+                const project = createProject('6.0.0-alpha.52', ['roku-deploy']);
+
+                ProjectManager.innerInstallDependencies(project, '6.0.0-alpha.52', true);
+
+                expect(installs).to.eql(['roku-deploy@3.18.4']);
             });
         });
     });
