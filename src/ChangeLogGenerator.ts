@@ -6,7 +6,7 @@
 import * as fsExtra from 'fs-extra';
 import * as semver from 'semver';
 import { logger, utils, standardizePath as s } from './utils';
-import type { Commit, Project } from './ProjectManager';
+import type { Commit, Project, ProjectDependency } from './ProjectManager';
 import { ProjectManager } from './ProjectManager';
 
 export class ChangelogGenerator {
@@ -119,6 +119,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             }
         }
 
+        const changedDependencyNames = new Set(
+            [...project.dependencies, ...project.devDependencies].filter(dependency => dependency.hasChanged()).map(dependency => dependency.name)
+        );
         for (const dependency of [...project.dependencies, ...project.devDependencies]) {
             if (!utils.isVersion(dependency.previousReleaseVersion)) {
                 sectionMap.Added.push(` - added [${dependency.name}@${dependency.newVersion}](${ProjectManager.getProject(dependency.repoName).repositoryUrl})`);
@@ -128,18 +131,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
                     sectionMap.Changed.push(
                         [
                             ` - upgrade to [${dependency.name}@${dependency.newVersion}]`,
-                            `(${dependencyProject.repositoryUrl}/blob/master/CHANGELOG.md#`,
+                            `(${dependencyProject.repositoryUrl}/blob/v${dependency.newVersion}/CHANGELOG.md#`,
                             `${dependency.newVersion.replace(/\./g, '')}---${this.getVersionDate(dependencyProject.dir, dependency.newVersion)}). `,
                             `Notable changes since ${dependency.previousReleaseVersion}:`
                         ].join('')
                     );
-                    const dependencyCommits = this.getCommitLogs(dependency.repoName, dependency.previousReleaseVersion, dependency.newVersion);
-                    const dependencyContext: CommitContext = {
-                        dir: dependencyProject.dir,
-                        ref: utils.isVersion(dependency.newVersion) ? `v${dependency.newVersion}` : dependency.newVersion
-                    };
-                    for (const group of this.groupCommitsByMessage(dependencyCommits, dependencyContext)) {
-                        sectionMap.Changed.push(`     - ${group.message} (${getReflinks(dependency, group.commits)})`);
+                    const curatedLines = this.getCuratedDependencyLines(dependency, dependencyProject, changedDependencyNames);
+                    if (curatedLines) {
+                        sectionMap.Changed.push(...curatedLines);
+                    } else {
+                        const dependencyCommits = this.getCommitLogs(dependency.repoName, dependency.previousReleaseVersion, dependency.newVersion);
+                        const dependencyContext: CommitContext = {
+                            dir: dependencyProject.dir,
+                            ref: utils.isVersion(dependency.newVersion) ? `v${dependency.newVersion}` : dependency.newVersion
+                        };
+                        for (const group of this.groupCommitsByMessage(dependencyCommits, dependencyContext)) {
+                            sectionMap.Changed.push(`     - ${group.message} (${getReflinks(dependency, group.commits)})`);
+                        }
                     }
                 } else {
                     sectionMap.Changed.push(
@@ -164,6 +172,201 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         }
 
         return lines;
+    }
+
+    /**
+     * Matches the start of a release heading, i.e. `## [1.2.3](https://...) - 2026-01-31`. Only the version is captured so a malformed link or date suffix does not drop the section.
+     */
+    private static SECTION_HEADING_REGEX = /^## \[([^\]]+)\]/;
+
+    /**
+     * Matches a top-level bullet that is a dependency block, i.e. ` - upgrade to [pkg@1.0.0](...)`
+     */
+    private static DEPENDENCY_BLOCK_REGEX = /^[-*]\s+(?:upgrade to|downgrade from\s+\S+\s+to|downgrade from|added)\s+\[(@?[^\]]+?)@[^\]@]*\]/;
+
+    /**
+     * Matches the trailing reflink group of a bullet, i.e. ` ([#1](url), [#2](url))`
+     */
+    private static TRAILING_REFLINKS_REGEX = /\s\(+(\[[^\]]*\]\([^)]*\)(?:,\s*\[[^\]]*\]\([^)]*\))*)\)+\s*$/;
+
+    /**
+     * Read the CHANGELOG.md of a dependency repo as of the tag for the given version. Returns an empty string
+     * when the tag or file does not exist.
+     */
+    private readDependencyChangelog(dir: string, version: string) {
+        return utils.tryExecuteCommandWithOutput(`git show v${version}:CHANGELOG.md`, { cwd: dir });
+    }
+
+    /**
+     * Split a changelog into its conforming release sections, in file order. A section runs until the next `## `
+     * heading of any kind. Non-conforming headings end a section but do not start one.
+     */
+    private parseChangelogSections(changelogText: string) {
+        const sections: ChangelogVersionSection[] = [];
+        let currentSection: ChangelogVersionSection;
+        for (const line of changelogText.split(/\r?\n/)) {
+            if (line.startsWith('## ')) {
+                const [, version] = ChangelogGenerator.SECTION_HEADING_REGEX.exec(line) ?? [];
+                currentSection = version ? { version: version, lines: [] } : undefined;
+                if (currentSection) {
+                    sections.push(currentSection);
+                }
+            } else if (currentSection) {
+                currentSection.lines.push(line);
+            }
+        }
+        return sections;
+    }
+
+    /**
+     * Sections whose version is listed in the new changelog but not in the old one, in the new changelog's order.
+     * This is deliberately a set difference rather than a semver range because a changelog can interleave versions
+     * merged from other branches.
+     */
+    private selectNewSections(newSections: ChangelogVersionSection[], oldSections: ChangelogVersionSection[]) {
+        const oldVersions = new Set(oldSections.map(section => section.version));
+        return newSections.filter(section => !oldVersions.has(section.version));
+    }
+
+    /**
+     * Collect the bullet items of the given sections, flattening the `### Added`/`### Fixed`/etc. subheadings away.
+     * Each item's continuation lines (nested bullets or wrapped text) are kept verbatim relative to the item's bullet.
+     */
+    private extractBullets(sections: ChangelogVersionSection[]) {
+        const items: ChangelogBullet[] = [];
+        for (const section of sections) {
+            let currentItem: ChangelogBullet;
+            let bulletIndent: number;
+            for (const line of section.lines) {
+                if (line.startsWith('#')) {
+                    currentItem = undefined;
+                    bulletIndent = undefined;
+                    continue;
+                }
+                if (!line.trim()) {
+                    continue;
+                }
+                const indent = /^\s*/.exec(line)[0].length;
+                const isBullet = /^\s*[-*]\s/.test(line);
+                if (isBullet && (bulletIndent === undefined || indent <= bulletIndent)) {
+                    bulletIndent = indent;
+                    currentItem = { text: line.slice(indent).trimEnd(), children: [] };
+                    items.push(currentItem);
+                } else if (currentItem && indent > bulletIndent) {
+                    currentItem.children.push(line.slice(bulletIndent).trimEnd());
+                }
+            }
+        }
+        return items;
+    }
+
+    /**
+     * Drop dependency blocks (bullet plus children) for packages the target project depends on directly and
+     * whose version changes in this release, since those get their own upgrade block. Blocks for any other
+     * package, including a direct dependency that is unchanged, are kept.
+     */
+    private removeDirectDependencyBlocks(items: ChangelogBullet[], changedDependencyNames: Set<string>) {
+        return items.filter(item => {
+            const [, packageName] = ChangelogGenerator.DEPENDENCY_BLOCK_REGEX.exec(item.text) ?? [];
+            return !packageName || !changedDependencyNames.has(packageName);
+        });
+    }
+
+    /**
+     * Combine items that carry the same message (after the same normalization used for commit messages) so their
+     * reflinks are listed together, sorted by ascending pr number with non-pr links last. Items with nested lines
+     * are never combined, and exact duplicate items are skipped.
+     */
+    private mergeDuplicateBullets(items: ChangelogBullet[], context: CommitContext) {
+        const merged: Array<{ message: string; reflinks: string[]; children: string[] }> = [];
+        const groupsByKey = new Map<string, typeof merged[0]>();
+        const seenExactItems = new Set<string>();
+        for (const item of items) {
+            const exactKey = [item.text, ...item.children].join('\n');
+            if (seenExactItems.has(exactKey)) {
+                continue;
+            }
+            seenExactItems.add(exactKey);
+
+            const messageText = item.text.replace(/^[-*]\s+/, '');
+            const [reflinkMatch, reflinkText] = ChangelogGenerator.TRAILING_REFLINKS_REGEX.exec(messageText) ?? [];
+            const message = this.normalizeCommitMessage(
+                reflinkMatch ? messageText.slice(0, messageText.length - reflinkMatch.length) : messageText,
+                context
+            );
+            const reflinks = reflinkText ? reflinkText.split(/,\s*(?=\[)/) : [];
+            let group = item.children.length === 0 ? groupsByKey.get(message) : undefined;
+            if (!group) {
+                group = { message: message, reflinks: [], children: item.children };
+                merged.push(group);
+                if (item.children.length === 0) {
+                    groupsByKey.set(message, group);
+                }
+            }
+            for (const reflink of reflinks) {
+                if (!group.reflinks.includes(reflink)) {
+                    group.reflinks.push(reflink);
+                }
+            }
+        }
+        const getPullRequestNumber = (reflink: string) => {
+            const [, prNumber] = /#(\d+)\]/.exec(reflink) ?? [];
+            return prNumber ? parseInt(prNumber) : Number.POSITIVE_INFINITY;
+        };
+        return merged.map(group => {
+            const sortedReflinks = group.reflinks
+                .map((reflink, index) => ({ reflink: reflink, index: index }))
+                .sort((left, right) => {
+                    const leftNumber = getPullRequestNumber(left.reflink);
+                    const rightNumber = getPullRequestNumber(right.reflink);
+                    if (leftNumber === rightNumber) {
+                        return left.index - right.index;
+                    }
+                    return leftNumber < rightNumber ? -1 : 1;
+                })
+                .map(entry => entry.reflink);
+            return [
+                `     - ${group.message}${sortedReflinks.length > 0 ? ` (${sortedReflinks.join(', ')})` : ''}`,
+                ...group.children.map(child => `     ${child}`)
+            ];
+        }).flat();
+    }
+
+    /**
+     * Build the sub-bullets for a dependency upgrade from the dependency's own CHANGELOG.md, using the entries
+     * that exist at the new version's tag but not at the previous version's tag. Returns `undefined` (after logging
+     * why) when the curated changelog can't be used, so the caller can fall back to commit messages. Sections that
+     * exist but hold no bullets yield an empty array, which is deliberate curation rather than a failure.
+     */
+    private getCuratedDependencyLines(dependency: ProjectDependency, dependencyProject: Project, changedDependencyNames: Set<string>) {
+        const fallBack = (reason: string) => {
+            logger.log(`Using commit messages for ${dependency.name}@${dependency.newVersion}: ${reason}`);
+            return undefined as string[];
+        };
+        const newChangelog = this.readDependencyChangelog(dependencyProject.dir, dependency.newVersion);
+        if (!newChangelog) {
+            return fallBack(`no CHANGELOG.md at v${dependency.newVersion}`);
+        }
+        const oldChangelog = this.readDependencyChangelog(dependencyProject.dir, dependency.previousReleaseVersion);
+        if (!oldChangelog) {
+            return fallBack(`no CHANGELOG.md at v${dependency.previousReleaseVersion}`);
+        }
+        const newSections = this.parseChangelogSections(newChangelog);
+        if (newSections.length === 0) {
+            return fallBack(`no conforming release headings at v${dependency.newVersion}`);
+        }
+        if (!newSections.some(section => section.version === dependency.newVersion)) {
+            return fallBack(`no heading for ${dependency.newVersion} in the changelog`);
+        }
+        const oldSections = this.parseChangelogSections(oldChangelog);
+        if (oldSections.length === 0) {
+            return fallBack(`no conforming release headings at v${dependency.previousReleaseVersion}`);
+        }
+        const bullets = this.removeDirectDependencyBlocks(
+            this.extractBullets(this.selectNewSections(newSections, oldSections)),
+            changedDependencyNames
+        );
+        return this.mergeDuplicateBullets(bullets, { dir: dependencyProject.dir, ref: `v${dependency.newVersion}` });
     }
 
     static SECURITY_ENHANCEMENTS_MESSAGE = 'Security enhancements';
@@ -359,4 +562,17 @@ type ChangelogSection = 'Added' | 'Changed' | 'Deprecated' | 'Fixed' | 'Removed'
 interface CommitContext {
     dir: string;
     ref: string;
+}
+
+interface ChangelogVersionSection {
+    version: string;
+    lines: string[];
+}
+
+/**
+ * A top-level changelog bullet (without its leading indent) and its nested lines, relative to the bullet
+ */
+interface ChangelogBullet {
+    text: string;
+    children: string[];
 }
