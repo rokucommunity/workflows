@@ -183,6 +183,10 @@ export class ProjectManager {
                     logger.log(`Dependency project dir: ${dependencyProject.dir}`);
                     dependency.previousReleaseVersion = utils.executeCommandWithOutput('git rev-list --max-parents=0 HEAD', { cwd: dependencyProject.dir });
                 }
+                //record what is installed right now, before any upgrade. When an upgrade is skipped below, this is still the
+                //version being released, and it can differ from the previous release if the pin was bumped by hand since the
+                //last tag. Without it, `newVersion` stays empty, `hasChanged()` is false, and the changelog drops the upgrade.
+                dependency.newVersion = ProjectManager.getInstalledVersion(project, dependency.name);
                 if (installDependencies) {
                     //The floor for this dependency is the highest version we already know about: the pin sitting in the
                     //working tree's package.json, or the one from the previous release, whichever is greater. Using only the
@@ -241,9 +245,6 @@ export class ProjectManager {
                     if (dependency.newVersion !== dependency.previousReleaseVersion) {
                         logger.log(`Updating ${dependencyType} version for ${dependency.name} from ${dependency.previousReleaseVersion} to ${dependency.newVersion}`);
                     }
-
-                } else {
-                    dependency.newVersion = ProjectManager.getInstalledVersion(project, dependency.name);
                 }
             }
         };

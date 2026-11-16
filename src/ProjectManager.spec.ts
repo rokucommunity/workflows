@@ -211,8 +211,8 @@ describe('ProjectManager', () => {
             //after `npm install`, the code reads the installed version back out of node_modules
             sinon.stub(ProjectManager, 'getInstalledVersion').callsFake((project, packageName: string) => {
                 const installed = installs.find(x => x.startsWith(`${packageName}@`));
-                //if nothing was installed, node_modules still holds whatever the previous release pinned
-                return installed ? installed.split('@').pop() : options.previousVersions[packageName];
+                //if nothing was installed, node_modules holds whatever the working tree pins
+                return installed ? installed.split('@').pop() : (options.treePins ?? options.previousVersions)[packageName];
             });
 
             return installs;
@@ -541,6 +541,78 @@ describe('ProjectManager', () => {
                 ProjectManager.innerInstallDependencies(project, '6.0.0-alpha.52', true);
 
                 expect(installs).to.eql(['roku-deploy@3.18.4']);
+            });
+        });
+
+        describe('hand-bumped pin with no upgrade available', () => {
+            it('still reports the hand-bumped version as changed since the last release', () => {
+                //the exact rooibos 6.0.0-alpha.58 release: rooibos#463 hand-bumped brighterscript to `^1.0.0-alpha.58`
+                //after the v6.0.0-alpha.57 tag (which pinned `^1.0.0-alpha.57`), and alpha.58 was already the newest.
+                //The skipped install left `newVersion` empty, so the changelog had no brighterscript upgrade block and
+                //instead nested brighterscript's notes under bslint's.
+                const installs = setupInstallStubs({
+                    registry: {
+                        'brighterscript': ['0.73.8', '1.0.0-alpha.57', '1.0.0-alpha.58'],
+                        '@rokucommunity/bslint': ['0.8.0', '1.0.0-alpha.57', '1.0.0-alpha.58']
+                    },
+                    previousVersions: { 'brighterscript': '1.0.0-alpha.57', '@rokucommunity/bslint': '1.0.0-alpha.57' },
+                    treePins: { 'brighterscript': '1.0.0-alpha.58', '@rokucommunity/bslint': '1.0.0-alpha.57' }
+                });
+                const project = createProject('6.0.0-alpha.57', ['brighterscript'], ['@rokucommunity/bslint']);
+
+                ProjectManager.innerInstallDependencies(project, '6.0.0-alpha.57', true);
+
+                expect(installs).to.eql(['@rokucommunity/bslint@1.0.0-alpha.58']);
+                const [brighterscript] = project.dependencies;
+                expect(brighterscript.previousReleaseVersion).to.equal('1.0.0-alpha.57');
+                expect(brighterscript.newVersion).to.equal('1.0.0-alpha.58');
+                expect(brighterscript.hasChanged()).to.be.ok;
+                const [bslint] = project.devDependencies;
+                expect(bslint.newVersion).to.equal('1.0.0-alpha.58');
+                expect(bslint.hasChanged()).to.be.ok;
+            });
+
+            it('reports the hand-bumped version when `latest` would be a downgrade', () => {
+                const installs = setupInstallStubs({
+                    registry: { 'roku-deploy': ['3.12.0', '3.13.0'] },
+                    previousVersions: { 'roku-deploy': '3.12.0' },
+                    treePins: { 'roku-deploy': '3.13.0' }
+                });
+                const project = createProject('1.0.0', ['roku-deploy']);
+
+                ProjectManager.innerInstallDependencies(project, '0.9.0', true);
+
+                expect(installs).to.eql([]);
+                expect(project.dependencies[0].newVersion).to.equal('3.13.0');
+                expect(project.dependencies[0].hasChanged()).to.be.ok;
+            });
+
+            it('reports the hand-bumped version when npm has no version to offer', () => {
+                const installs = setupInstallStubs({
+                    registry: {},
+                    previousVersions: { 'roku-deploy': '3.12.0' },
+                    treePins: { 'roku-deploy': '3.13.0' }
+                });
+                const project = createProject('1.0.0', ['roku-deploy']);
+
+                ProjectManager.innerInstallDependencies(project, '0.9.0', true);
+
+                expect(installs).to.eql([]);
+                expect(project.dependencies[0].newVersion).to.equal('3.13.0');
+                expect(project.dependencies[0].hasChanged()).to.be.ok;
+            });
+
+            it('reports no change when the skipped dependency was not bumped since the last release', () => {
+                setupInstallStubs({
+                    registry: { 'roku-deploy': ['3.18.4', '4.0.0-alpha.3'] },
+                    previousVersions: { 'roku-deploy': '4.0.0-alpha.3' }
+                });
+                const project = createProject('0.21.0', ['roku-deploy']);
+
+                ProjectManager.innerInstallDependencies(project, '0.20.0', true);
+
+                expect(project.dependencies[0].newVersion).to.equal('4.0.0-alpha.3');
+                expect(project.dependencies[0].hasChanged()).to.not.be.ok;
             });
         });
     });
